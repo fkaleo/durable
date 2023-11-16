@@ -1,4 +1,4 @@
-from typing import Callable, ItemsView, Mapping, MutableMapping, Protocol, KT, VT_co
+from typing import Any, Callable, ItemsView, Mapping, MutableMapping, Protocol, KT, VT_co
 from rocksdict import AccessType, Rdict
 # from speedict import Rdict
 import functools
@@ -104,13 +104,26 @@ def keys_with_prefix(store: SortedItems, prefix: str):
         else:
             break
 
-def cached(cache, key):
-    def decorator(func):
+# Protocol @observe requires:
+# add_call_pending(func, *args, **kwargs)
+# is_call_pending(func, *args, **kwargs)
+
+# Protocol @cache requires:
+# set_call_result(func, *args, **kwargs)
+
+
+PENDING = None
+
+
+def cached(cache: MutableMapping, key: Callable[..., Any]) -> Callable:
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             k = key(*args, **kwargs)
             try:
-                return cache[k]
+                v = cache[k]
+                if v != PENDING:
+                    return v
             except KeyError:
                 pass
             v = func(*args, **kwargs)
@@ -124,12 +137,25 @@ def cached(cache, key):
 
     return decorator
 
+def observed(cache: MutableMapping, key: Callable[..., Any]) -> Callable:
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            k = key(*args, **kwargs)
+            # FIXME: should do that transactionally
+            cache[k] = PENDING
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 _stores: Mapping[str, MutableMapping] = {}
 
-DEFAULT_STORE_ID = "app_state.db"
+DEFAULT_CACHE_STORE_ID = "app_state.db"
+DEFAULT_CALL_STORE_ID = "app_state.db"
 
-def get_store(store_id: str = DEFAULT_STORE_ID, access_type: AccessType = AccessType.read_only()):
+def get_store(store_id: str = DEFAULT_CACHE_STORE_ID, access_type: AccessType = AccessType.read_only()):
     store = _stores.get(store_id)
     if not store:
         store = Rdict(store_id, access_type=access_type)
@@ -141,10 +167,15 @@ def get_store(store_id: str = DEFAULT_STORE_ID, access_type: AccessType = Access
 def path_from_func(func: Callable):
     return f"/{func.__name__}/"
 
-def cache(func: Callable, store_id: str = DEFAULT_STORE_ID) -> Callable:
+def key_for_function_call(func, *args, **kwargs):
+    argskey = _make_key(args, kwds=kwargs, typed=False)
+    # argskey = f"{str(args)}_{str(kwargs)}"
+    return f"{path_from_func(func)}{argskey}"
+
+def cache(func: Callable, store_id: str = DEFAULT_CACHE_STORE_ID) -> Callable:
     store = get_store(store_id, AccessType.read_write())
-    def key(*args, **kwargs):
-        argskey = _make_key(args, kwds=kwargs, typed=False)
-        # argskey = f"{str(args)}_{str(kwargs)}"
-        return f"{path_from_func(func)}{argskey}"
-    return cached(cache=store, key=key)(func)
+    return cached(cache=store, key=functools.partial(key_for_function_call, func))(func)
+
+def observe(func: Callable, store_id: str = DEFAULT_CALL_STORE_ID) -> Callable:
+    store = get_store(store_id, AccessType.read_write())
+    return observed(cache=store, key=functools.partial(key_for_function_call, func))(func)

@@ -1,13 +1,15 @@
-from durable import durable
+from durable.durable import cache, observe
 from tqdm import tqdm
 import time
 
-@durable.cache
+@cache
+@observe
 def my_long_op(url: str):
     time.sleep(1)
     return f"{len(url)} {url}"
 
-@durable.cache
+@cache
+@observe
 def my_very_long_op(url):
     time.sleep(1)
     return url.split("://")[1]
@@ -15,6 +17,6 @@ def my_very_long_op(url):
 prefix = "http://"
 urls = [f"{prefix}{i}" for i in range(1000000)]
 
-# for url in tqdm(urls, miniters=1, dynamic_ncols=True):
-#     # my_very_long_op(url)
-#     my_long_op(url)
+for url in tqdm(urls, mininterval=0.05, miniters=1, dynamic_ncols=True):
+    # my_very_long_op(url)
+    my_long_op(url)
