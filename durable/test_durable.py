@@ -1,4 +1,3 @@
-import os
 import pytest
 import functools
 import cachetools
@@ -74,7 +73,6 @@ def test_cache_key_sensitivity(durable_instance, kwargs, expected):
     # Test with different order of keyword arguments
     assert cached_func(**kwargs) == expected
 
-# @pytest.mark.skip
 @pytest.mark.parametrize("cache_type", ['durable', 'functools', 'none', 'cachetools'])
 @pytest.mark.parametrize("test_func, args", [(compute_heavy_task, (100,)),
                                              (donothing, ()),
