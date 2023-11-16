@@ -182,7 +182,7 @@ def cache(func: Callable, store_id: str = None) -> Callable:
     store = get_store(store_id, AccessType.read_write())
     return cached(cache=store, key=functools.partial(key_for_function_call, func))(func)
 
-def observe(func: Callable, store_id: str = DEFAULT_CALL_STORE_ID) -> Callable:
+def observe(func: Callable, store_id: str = None) -> Callable:
     if not store_id:
         store_id = DEFAULT_CALL_STORE_ID
     store = get_store(store_id, AccessType.read_write())
