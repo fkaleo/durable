@@ -1,6 +1,7 @@
 from durable import durable
 
-store = durable.get_store()
+store = durable.get_store(durable.DEFAULT_CACHE_STORE_ID)
+
 # print(store["/my_long_op/http://1"])
 prefix = "/my_long_op/"
 # for k, v in store.items(from_key=prefix):

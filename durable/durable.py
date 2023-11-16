@@ -1,6 +1,7 @@
 # from speedict import Rdict
 import functools
 import inspect
+from concurrent.futures import Future
 from typing import (KT, Any, Callable, ItemsView, Mapping, MutableMapping,
                     Protocol, Type, VT_co, runtime_checkable)
 
@@ -115,7 +116,7 @@ def keys_with_prefix(store: SortedItems, prefix: str):
 # set_call_result(func, *args, **kwargs)
 
 @runtime_checkable
-class Future(Protocol):
+class FutureProtocol(Protocol):
 
     def add_done_callback(self, fn):
         ...
@@ -129,7 +130,7 @@ class Future(Protocol):
 PENDING = None
 
 def is_future_type(type_: Type) -> bool:
-    return isinstance(type_, Future)
+    return isinstance(type_, FutureProtocol)
 
 
 def cached(cache: MutableMapping, key_func: Callable[..., Any]) -> Callable:
@@ -148,7 +149,10 @@ def cached(cache: MutableMapping, key_func: Callable[..., Any]) -> Callable:
                 cached_value = cache[key]
                 # If the function is supposed to return a Future, wrap the cached value
                 if is_future_type(return_type):
-                    future = return_type()
+                    # FIXME: Unfortunately we cannot always reconstruct the original future type
+                    # For example dask's distributed.Future cannot be instantiated simply
+                    # We use concurrent.futures.Future instead
+                    future = Future()
                     future.set_result(cached_value)
                     return future
                 else:
@@ -191,10 +195,10 @@ def observed(cache: MutableMapping, key: Callable[..., Any]) -> Callable:
 
 _stores: Mapping[str, MutableMapping] = {}
 
-DEFAULT_CACHE_STORE_ID = "app_state.db"
-DEFAULT_CALL_STORE_ID = "app_state.db"
+DEFAULT_CACHE_STORE_ID = "cache.db"
+DEFAULT_CALL_STORE_ID = "calls.db"
 
-def get_store(store_id: str = DEFAULT_CACHE_STORE_ID, access_type: AccessType = AccessType.read_only()):
+def get_store(store_id, access_type: AccessType = AccessType.read_only()):
     store = _stores.get(store_id)
     if not store:
         store = Rdict(store_id, access_type=access_type)

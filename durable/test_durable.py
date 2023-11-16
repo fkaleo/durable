@@ -8,7 +8,7 @@ import cachetools
 import distributed
 import pytest
 
-from .durable import Future as FutureProtocol
+from .durable import FutureProtocol
 
 
 def donothing() -> None:
@@ -103,8 +103,12 @@ def async_longer_add_in_thread(x, y) -> Future:
         future = executor.submit(longer_add, x, y)
         return future
 
-def async_add_with_dask(x, y) -> distributed.Future:
+@pytest.fixture(scope="module", autouse=True)
+def dask_client():
     client = distributed.Client()
+
+def async_add_with_dask(x, y) -> distributed.Future:
+    client = distributed.get_client()
     future = client.submit(add, x, y)
     return future
 
@@ -126,6 +130,11 @@ def test_cached_with_future(durable, func, args, expected):
     assert isinstance(future_result, FutureProtocol), "The result should respect the Future Protocol"
     assert future_result.result() == expected, f"The result of the future should be {expected}"
     assert mocked_func.call_count == 1, "Function should be called once"
+
+    # Wait for the cache to be filled
+    # Some frameworks execute callbacks passed to Future.add_done_callback asynchronously
+    # FIXME: do it better
+    time.sleep(0.1)
 
     # Test the cache
     # Call the function again with the same arguments and ensure the cached result is returned
