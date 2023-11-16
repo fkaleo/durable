@@ -6,6 +6,7 @@ from unittest.mock import create_autospec
 
 import cachetools
 import distributed
+import ray
 import pytest
 
 from .durable import FutureProtocol
@@ -112,11 +113,16 @@ def async_add_with_dask(x, y) -> distributed.Future:
     future = client.submit(add, x, y)
     return future
 
+def async_add_with_ray(x, y) -> distributed.Future:
+    ray.init(ignore_reinit_error=True)
+    return ray.remote(add).remote(x, y).future()
+
 @pytest.mark.parametrize("func, args, expected", [
     (async_add_fake, (10, 3), 13),
     (async_add_in_thread, (2, 5), 7),
     (async_longer_add_in_thread, (2, 5), 7),
     (async_add_with_dask, (33, 1), 34),
+    (async_add_with_ray, (3, 1), 4),
 ])
 def test_cached_with_future(durable, func, args, expected):
     # Mock the original function
