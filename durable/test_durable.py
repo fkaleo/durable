@@ -113,7 +113,7 @@ def async_add_with_dask(x, y) -> distributed.Future:
     future = client.submit(add, x, y)
     return future
 
-def async_add_with_ray(x, y) -> distributed.Future:
+def async_add_with_ray(x, y) -> Future:
     ray.init(ignore_reinit_error=True)
     return ray.remote(add).remote(x, y).future()
 
