@@ -5,6 +5,7 @@ from typing import Any
 from unittest.mock import create_autospec
 
 import cachetools
+import distributed
 import pytest
 
 from .durable import Future as FutureProtocol
@@ -102,10 +103,16 @@ def async_longer_add_in_thread(x, y) -> Future:
         future = executor.submit(longer_add, x, y)
         return future
 
+def async_add_with_dask(x, y) -> distributed.Future:
+    client = distributed.Client()
+    future = client.submit(add, x, y)
+    return future
+
 @pytest.mark.parametrize("func, args, expected", [
     (async_add_fake, (10, 3), 13),
     (async_add_in_thread, (2, 5), 7),
     (async_longer_add_in_thread, (2, 5), 7),
+    (async_add_with_dask, (33, 1), 34),
 ])
 def test_cached_with_future(durable, func, args, expected):
     # Mock the original function
