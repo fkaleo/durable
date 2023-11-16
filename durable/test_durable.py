@@ -1,5 +1,7 @@
 import functools
+import time
 from concurrent.futures import Future, ThreadPoolExecutor
+from unittest.mock import create_autospec
 
 import cachetools
 import pytest
@@ -76,6 +78,51 @@ def test_cache_key_sensitivity(durable, kwargs, expected):
 
     # Test with different order of keyword arguments
     assert cached_func(**kwargs) == expected
+
+
+def async_add_fake(x, y):
+    future = Future()
+    future.set_result(add(x, y))
+    return future
+
+def async_add_in_thread(x, y):
+    with ThreadPoolExecutor() as executor:
+        future = executor.submit(add, x, y)
+        return future
+
+def longer_add(x, y):
+    time.sleep(0.1)
+    return add(x, y)
+
+def async_longer_add_in_thread(x, y):
+    with ThreadPoolExecutor() as executor:
+        future = executor.submit(longer_add, x, y)
+        return future
+
+@pytest.mark.parametrize("func, args, expected", [
+    (async_add_fake, (10, 3), 13),
+    (async_add_in_thread, (2, 5), 7),
+    (async_longer_add_in_thread, (2, 5), 7),
+])
+def test_cached_with_future(durable, func, args, expected):
+    # Mock the original function
+    mocked_func = create_autospec(func, side_effect=func)
+
+    # Apply the 'cached' decorator
+    cached_func = durable.cache(mocked_func)
+
+    future_result = cached_func(*args)
+
+    assert isinstance(future_result, Future), "The result should be a Future"
+    assert future_result.result() == expected, f"The result of the future should be {expected}"
+    assert mocked_func.call_count == 1, "Function should be called once"
+
+    # Test the cache
+    # Call the function again with the same arguments and ensure the cached result is returned
+    cached_result = cached_func(*args)
+    assert cached_result.result() == expected, f"The cached result should be {expected}"
+    assert mocked_func.call_count == 1, "Function should not be called again, result should be from cache"
+
 
 @pytest.mark.parametrize("cache_type", ['durable', 'functools', 'none', 'cachetools'])
 @pytest.mark.parametrize("test_func, args", [(compute_heavy_task, (100,)),
