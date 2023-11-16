@@ -1,11 +1,13 @@
 import functools
 import time
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, Future
 from typing import Any
 from unittest.mock import create_autospec
 
 import cachetools
 import pytest
+
+from .durable import Future as FutureProtocol
 
 
 def donothing() -> None:
@@ -114,7 +116,7 @@ def test_cached_with_future(durable, func, args, expected):
 
     future_result = cached_func(*args)
 
-    assert isinstance(future_result, Future), "The result should be a Future"
+    assert isinstance(future_result, FutureProtocol), "The result should respect the Future Protocol"
     assert future_result.result() == expected, f"The result of the future should be {expected}"
     assert mocked_func.call_count == 1, "Function should be called once"
 

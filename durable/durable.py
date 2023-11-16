@@ -1,12 +1,11 @@
 # from speedict import Rdict
+from ast import Call
 import functools
-from concurrent.futures import Future
 import inspect
 from typing import (KT, Any, Callable, ItemsView, Mapping, MutableMapping,
-                    Protocol, Type, VT_co)
+                    Protocol, Type, VT_co, runtime_checkable)
 
 from rocksdict import AccessType, Rdict
-
 
 class _HashedSeq(list):
     """ This class guarantees that hash() will be called no more than once
@@ -116,16 +115,23 @@ def keys_with_prefix(store: SortedItems, prefix: str):
 # Protocol @cache requires:
 # set_call_result(func, *args, **kwargs)
 
+@runtime_checkable
+class Future(Protocol):
+
+    def add_done_callback(self, fn):
+        ...
+
+    def result(self, timeout=None):
+        ...
+
+    # def set_result(self, result: Any) -> None:
+    #     ...
 
 PENDING = None
 
-# futures support relies on the future having:
-# - add_done_callback(...)
-# - set_result(...)
-# FIXME: use a protocol instead
-def is_future_type(type: Type) -> bool:
-    return hasattr(type, "add_done_callback") and \
-            hasattr(type, "set_result")
+def is_future_type(type_: Type) -> bool:
+    return isinstance(type_, Future)
+
 
 def cached(cache: MutableMapping, key_func: Callable[..., Any]) -> Callable:
     def decorator(func: Callable) -> Callable:
@@ -154,12 +160,12 @@ def cached(cache: MutableMapping, key_func: Callable[..., Any]) -> Callable:
 
             result = func(*args, **kwargs)
 
-            if is_future_type(type(result)):
+            if is_future_type(result):
                 def on_future_done(future):
                     try:
                         cache[key] = future.result()
                     except Exception as e:
-                        cache[key] = e # FIXME
+                        cache[key] = e # FIXME: should we store exceptions?
 
                 result.add_done_callback(on_future_done)
                 return result
