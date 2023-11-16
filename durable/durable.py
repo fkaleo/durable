@@ -3,7 +3,7 @@ import functools
 from concurrent.futures import Future
 import inspect
 from typing import (KT, Any, Callable, ItemsView, Mapping, MutableMapping,
-                    Protocol, VT_co)
+                    Protocol, Type, VT_co)
 
 from rocksdict import AccessType, Rdict
 
@@ -119,6 +119,13 @@ def keys_with_prefix(store: SortedItems, prefix: str):
 
 PENDING = None
 
+# futures support relies on the future having:
+# - add_done_callback(...)
+# - set_result(...)
+# FIXME: use a protocol instead
+def is_future_type(type: Type) -> bool:
+    return hasattr(type, "add_done_callback") and \
+            hasattr(type, "set_result")
 
 def cached(cache: MutableMapping, key_func: Callable[..., Any]) -> Callable:
     def decorator(func: Callable) -> Callable:
@@ -135,8 +142,8 @@ def cached(cache: MutableMapping, key_func: Callable[..., Any]) -> Callable:
             try:
                 cached_value = cache[key]
                 # If the function is supposed to return a Future, wrap the cached value
-                if return_type == Future:
-                    future = Future()
+                if is_future_type(return_type):
+                    future = return_type()
                     future.set_result(cached_value)
                     return future
                 else:
@@ -147,7 +154,7 @@ def cached(cache: MutableMapping, key_func: Callable[..., Any]) -> Callable:
 
             result = func(*args, **kwargs)
 
-            if isinstance(result, Future):
+            if is_future_type(type(result)):
                 def on_future_done(future):
                     try:
                         cache[key] = future.result()
