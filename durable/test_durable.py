@@ -1,7 +1,9 @@
-import pytest
 import functools
+from concurrent.futures import Future, ThreadPoolExecutor
+
 import cachetools
-from . import durable
+import pytest
+
 
 def donothing():
     pass
@@ -51,12 +53,14 @@ def compute_heavy_task(n):
 
 
 @pytest.fixture
-def durable_instance(tmp_path):
-    # FIXME: implement teardown
-    pass
+def durable(tmp_path):
+    from . import durable
+    durable.DEFAULT_CACHE_STORE_ID = str(tmp_path / "test_cache.db")
+    durable.DEFAULT_CALL_STORE_ID = str(tmp_path / "test_call.db")
+    yield durable
 
 @pytest.mark.parametrize("args,expected", [((1, 2), 3), ((3, 4), 7), ((5, 6), 11)])
-def test_caching(durable_instance, args, expected):
+def test_caching(durable, args, expected):
     cached_func = durable.cache(add)
 
     # First call, result should be computed
@@ -67,7 +71,7 @@ def test_caching(durable_instance, args, expected):
 
 
 @pytest.mark.parametrize("kwargs,expected", [({'x': 7, 'y': 8}, 15), ({'y': 8, 'x': 7}, 15)])
-def test_cache_key_sensitivity(durable_instance, kwargs, expected):
+def test_cache_key_sensitivity(durable, kwargs, expected):
     cached_func = durable.cache(add)
 
     # Test with different order of keyword arguments
@@ -79,7 +83,7 @@ def test_cache_key_sensitivity(durable_instance, kwargs, expected):
                                              (donothing_singlearg, (100,)),
                                              (fibonacci, (100,)),
                                              ])
-def test_benchmark_functions(benchmark, durable_instance, test_func, args, cache_type):
+def test_benchmark_functions(benchmark, durable, test_func, args, cache_type):
     if cache_type == 'durable':
         func_to_benchmark = durable.cache(test_func)
     elif cache_type == 'functools':

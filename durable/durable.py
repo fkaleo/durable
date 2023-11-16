@@ -1,7 +1,11 @@
-from typing import Any, Callable, ItemsView, Mapping, MutableMapping, Protocol, KT, VT_co
-from rocksdict import AccessType, Rdict
 # from speedict import Rdict
 import functools
+from concurrent.futures import Future
+from typing import (KT, Any, Callable, ItemsView, Mapping, MutableMapping,
+                    Protocol, VT_co)
+
+from rocksdict import AccessType, Rdict
+
 
 class _HashedSeq(list):
     """ This class guarantees that hash() will be called no more than once
@@ -172,10 +176,14 @@ def key_for_function_call(func, *args, **kwargs):
     # argskey = f"{str(args)}_{str(kwargs)}"
     return f"{path_from_func(func)}{argskey}"
 
-def cache(func: Callable, store_id: str = DEFAULT_CACHE_STORE_ID) -> Callable:
+def cache(func: Callable, store_id: str = None) -> Callable:
+    if not store_id:
+        store_id = DEFAULT_CACHE_STORE_ID
     store = get_store(store_id, AccessType.read_write())
     return cached(cache=store, key=functools.partial(key_for_function_call, func))(func)
 
 def observe(func: Callable, store_id: str = DEFAULT_CALL_STORE_ID) -> Callable:
+    if not store_id:
+        store_id = DEFAULT_CALL_STORE_ID
     store = get_store(store_id, AccessType.read_write())
     return observed(cache=store, key=functools.partial(key_for_function_call, func))(func)
