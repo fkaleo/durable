@@ -5,7 +5,7 @@ from typing import Any
 from unittest.mock import create_autospec
 
 import cachetools
-import distributed
+import dask.distributed
 import ray
 import pytest
 
@@ -106,10 +106,10 @@ def async_longer_add_in_thread(x, y) -> Future:
 
 @pytest.fixture(scope="module", autouse=True)
 def dask_client():
-    client = distributed.Client()
+    client = dask.distributed.Client()
 
-def async_add_with_dask(x, y) -> distributed.Future:
-    client = distributed.get_client()
+def async_add_with_dask(x, y) -> dask.distributed.Future:
+    client = dask.distributed.get_client()
     future = client.submit(add, x, y)
     return future
 
