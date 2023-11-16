@@ -1,6 +1,7 @@
 # from speedict import Rdict
 import functools
 from concurrent.futures import Future
+import inspect
 from typing import (KT, Any, Callable, ItemsView, Mapping, MutableMapping,
                     Protocol, VT_co)
 
@@ -119,23 +120,45 @@ def keys_with_prefix(store: SortedItems, prefix: str):
 PENDING = None
 
 
-def cached(cache: MutableMapping, key: Callable[..., Any]) -> Callable:
+def cached(cache: MutableMapping, key_func: Callable[..., Any]) -> Callable:
     def decorator(func: Callable) -> Callable:
+        # Determine if the function is supposed to return a Future
+        return_type = inspect.signature(func).return_annotation
+
+        # Check if the return type is declared
+        if return_type is inspect._empty:
+            raise TypeError("Function must have a declared return type")
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            k = key(*args, **kwargs)
+            key = key_func(*args, **kwargs)
             try:
-                v = cache[k]
-                if v != PENDING:
-                    return v
+                cached_value = cache[key]
+                # If the function is supposed to return a Future, wrap the cached value
+                if return_type == Future:
+                    future = Future()
+                    future.set_result(cached_value)
+                    return future
+                else:
+                    return cached_value
+
             except KeyError:
                 pass
-            v = func(*args, **kwargs)
-            try:
-                cache[k] = v
-            except ValueError:
-                pass
-            return v
+
+            result = func(*args, **kwargs)
+
+            if isinstance(result, Future):
+                def on_future_done(future):
+                    try:
+                        cache[key] = future.result()
+                    except Exception as e:
+                        cache[key] = e # FIXME
+
+                result.add_done_callback(on_future_done)
+                return result
+            else:
+                cache[key] = result
+                return result
 
         return wrapper
 
@@ -180,7 +203,7 @@ def cache(func: Callable, store_id: str = None) -> Callable:
     if not store_id:
         store_id = DEFAULT_CACHE_STORE_ID
     store = get_store(store_id, AccessType.read_write())
-    return cached(cache=store, key=functools.partial(key_for_function_call, func))(func)
+    return cached(cache=store, key_func=functools.partial(key_for_function_call, func))(func)
 
 def observe(func: Callable, store_id: str = None) -> Callable:
     if not store_id:

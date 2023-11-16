@@ -1,25 +1,26 @@
 import functools
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
+from typing import Any
 from unittest.mock import create_autospec
 
 import cachetools
 import pytest
 
 
-def donothing():
+def donothing() -> None:
     pass
 
-def donothing_singlearg(n):
+def donothing_singlearg(n) -> None:
     pass
 
-def add(x, y):
+def add(x, y) -> Any:
     return x + y
 
-def multiply(x, y):
+def multiply(x, y) -> Any:
     return x * y
 
-def fibonacci(n):
+def fibonacci(n) -> int:
     """Generate Fibonacci sequence up to n"""
     a, b = 0, 1
     sequence = []
@@ -29,7 +30,7 @@ def fibonacci(n):
     return sequence
 
 
-def is_prime(num):
+def is_prime(num) -> bool:
     if num <= 1:
         return False
     for i in range(2, int(num**0.5) + 1):
@@ -38,7 +39,7 @@ def is_prime(num):
     return True
 
 
-def compute_heavy_task(n):
+def compute_heavy_task(n) -> int:
     """ A function that performs a computationally heavy task and returns an integer.
         This function calculates the sum of the first n prime numbers.
     """
@@ -80,12 +81,12 @@ def test_cache_key_sensitivity(durable, kwargs, expected):
     assert cached_func(**kwargs) == expected
 
 
-def async_add_fake(x, y):
+def async_add_fake(x, y) -> Future:
     future = Future()
     future.set_result(add(x, y))
     return future
 
-def async_add_in_thread(x, y):
+def async_add_in_thread(x, y) -> Future:
     with ThreadPoolExecutor() as executor:
         future = executor.submit(add, x, y)
         return future
@@ -94,7 +95,7 @@ def longer_add(x, y):
     time.sleep(0.1)
     return add(x, y)
 
-def async_longer_add_in_thread(x, y):
+def async_longer_add_in_thread(x, y) -> Future:
     with ThreadPoolExecutor() as executor:
         future = executor.submit(longer_add, x, y)
         return future
