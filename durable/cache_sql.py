@@ -48,7 +48,7 @@ class SQLResultStore(ResultStore):
         cursor.execute(self.create_table_sql)
         self.connection.commit()
 
-    def get_results(self, function_name: str) -> List[Any]:
+    def get_function_calls(self, function_name: str) -> List[Any]:
         cursor = self.connection.cursor()
         select_sql = "SELECT function, args, result FROM function_calls WHERE function = ?"
         cursor.execute(select_sql, (function_name,))

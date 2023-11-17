@@ -164,7 +164,7 @@ class FunctionCall:
 
 
 class ResultStore(Protocol):
-    def get_results(self, function_name: str) -> List[Any]:
+    def get_function_calls(self, function_name: str) -> List[Any]:
         ...
 
     def get_result(self, call: FunctionCall) -> Any:
@@ -225,7 +225,7 @@ class DictResultStore(ResultStore):
     def __init__(self, cache: MutableMapping):
         self.cache = cache
 
-    def get_results(self, function_name: str) -> List[Any]:
+    def get_function_calls(self, function_name: str) -> List[Any]:
         # FIXME: assumes self.cache is compatible with SortedItems
         for key, value in keys_with_prefix(self.cache, path_from_func(function_name)):
             yield key, value
