@@ -13,11 +13,11 @@ from functions import media_service_search_person, \
 # @ray_to_future
 # @ray.remote(num_cpus=0.1)
 # @cache
-@sql_cached("sql_cache.db")
+@sql_cached("sqlite:///sql_cache.db")
 def is_speaker_in_video(*args, **kwargs) -> float:
     return real_is_speaker_in_video(*args, **kwargs)
 
-@sql_cached("sql_cache.db")
+@sql_cached("sqlite:///sql_cache.db")
 def get_diarized_transcript(*args, **kwargs) -> pd.DataFrame:
     return real_get_diarized_transcript(*args, **kwargs)
 
