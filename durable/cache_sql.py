@@ -8,7 +8,7 @@ def sql_cached(connection_string: str,
                create_table_sql: Optional[str] = None, 
                select_sql: Optional[str] = None, 
                insert_sql: Optional[str] = None,
-               key_gen_func: Optional[Callable[[Callable, Tuple, Dict], str]] = None) -> Callable:
+               key_func: Optional[Callable[[Callable, Tuple, Dict], str]] = None) -> Callable:
     """
     A decorator that caches the results of a function in a database.
     Allows customization of the SQL statements and the key generation logic.
@@ -27,12 +27,12 @@ def sql_cached(connection_string: str,
     if insert_sql is None:
         insert_sql = "INSERT INTO cache (key, result) VALUES (?, ?)"
 
-    if key_gen_func is None:
-        def default_key_gen_func(func: Callable, args: Tuple, kwargs: Dict) -> str:
+    if key_func is None:
+        def default_key_func(func: Callable, args: Tuple, kwargs: Dict) -> str:
             key_data = (func.__name__, args, frozenset(kwargs.items()))
             return hashlib.md5(pickle.dumps(key_data)).hexdigest()
 
-        key_gen_func = default_key_gen_func
+        key_func = default_key_func
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
@@ -44,7 +44,7 @@ def sql_cached(connection_string: str,
             cursor.execute(create_table_sql)
 
             # Generate a unique key using the provided key generation function
-            key = key_gen_func(func, args, kwargs)
+            key = key_func(func, args, kwargs)
 
             # Check if the result is in cache using the provided SELECT SQL
             cursor.execute(select_sql, (key,))
