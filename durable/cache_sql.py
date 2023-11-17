@@ -3,7 +3,7 @@ import pickle
 import sqlite3
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from .durable import (FunctionCall, ResultStore, _make_key, caching_decorator,
+from .durable import (FunctionCall, ResultStore, caching_decorator,
                       key_for_function_call)
 
 
