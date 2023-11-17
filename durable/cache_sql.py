@@ -82,8 +82,7 @@ class SQLAlchemyResultStore(ResultStore):
                  create_table_sql: Optional[str] = None,
                  select_sql: Optional[str] = None,
                 insert_sql: Optional[str] = None):
-        # self.engine = create_engine(connection_string, connect_args={"check_same_thread": True})
-        self.engine = create_engine(connection_string)
+        self.engine = create_engine(connection_string, echo=False, connect_args={"check_same_thread": False})
 
         if create_table_sql is None:
             create_table_sql = """
@@ -109,6 +108,7 @@ class SQLAlchemyResultStore(ResultStore):
     def _create_table(self):
         with self.engine.connect() as connection:
             connection.execute(text(self.create_table_sql))
+            connection.commit()
 
     def get_function_calls(self, function_name: str) -> List[Any]:
         with self.engine.connect() as connection:
@@ -135,6 +135,7 @@ class SQLAlchemyResultStore(ResultStore):
 
         with self.engine.connect() as connection:
             connection.execute(text(self.insert_sql), {"function": function_name, "args": serialized_args, "result": serialized_result})
+            connection.commit()
 
     def store_exception(self, call: FunctionCall, exception: Exception) -> None:
         pass
