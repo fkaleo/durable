@@ -1,9 +1,9 @@
 from durable import durable
+from durable.cache_sql import SQLResultStore
 
-store = durable.get_store(durable.DEFAULT_CACHE_STORE_ID)
+result_store = SQLResultStore("sql_cache.db")
+# result_store = durable.DictResultStore(durable.get_store(durable.DEFAULT_CACHE_STORE_ID))
 
-# print(store["/my_long_op/http://1"])
-prefix = "/"
-# for k, v in store.items(from_key=prefix):
-for k, v in durable.keys_with_prefix(store, prefix):
-    print(k, v)
+# prefix = "/my_long_op/http://1"
+for v in result_store.get_results("is_speaker_in_video"):
+    print(v)
