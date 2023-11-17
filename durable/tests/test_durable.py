@@ -71,9 +71,18 @@ def durable_cache(tmp_path):
 def functools_cache(tmp_path):
     yield functools.cache
 
+
+@pytest.fixture(params=[
+    "durable_cache",
+    "functools_cache",
+])
+def cache(request):
+    cache = request.getfixturevalue(request.param)
+    yield cache
+
 @pytest.mark.parametrize("args,expected", [((1, 2), 3), ((3, 4), 7), ((5, 6), 11)])
-def test_caching(durable_cache, args, expected):
-    cached_func = durable_cache(add)
+def test_caching(cache, args, expected):
+    cached_func = cache(add)
 
     # First call, result should be computed
     assert cached_func(*args) == expected
@@ -83,8 +92,8 @@ def test_caching(durable_cache, args, expected):
 
 
 @pytest.mark.parametrize("kwargs,expected", [({'x': 7, 'y': 8}, 15), ({'y': 8, 'x': 7}, 15)])
-def test_cache_key_sensitivity(durable_cache, kwargs, expected):
-    cached_func = durable_cache(add)
+def test_cache_key_sensitivity(cache, kwargs, expected):
+    cached_func = cache(add)
 
     # Test with different order of keyword arguments
     assert cached_func(**kwargs) == expected
@@ -122,10 +131,6 @@ def async_add_with_ray(x, y) -> Future:
     ray.init(ignore_reinit_error=True, logging_level=logging.WARNING)
     return ray.remote(add).remote(x, y).future()
 
-@pytest.mark.parametrize("cache_fixture", [
-    "durable_cache",
-    "functools_cache",
-])
 @pytest.mark.parametrize("func, args, expected", [
     (add, (10, 4), 14),
     (async_add_fake, (10, 3), 13),
@@ -134,12 +139,11 @@ def async_add_with_ray(x, y) -> Future:
     (async_add_with_dask, (33, 1), 34),
     (async_add_with_ray, (3, 1), 4),
 ])
-def test_cached_with_future(cache_fixture, func, args, expected, request):
+def test_cached_with_future(cache, func, args, expected):
     # Mock the original function
     mocked_func = create_autospec(func, side_effect=func)
 
-    # Apply the 'cache' decorator defined by the 'cache_fixture'
-    cache = request.getfixturevalue(cache_fixture)
+    # Apply the 'cache' decorator
     cached_func = cache(mocked_func)
 
     result = cached_func(*args)
