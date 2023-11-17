@@ -156,25 +156,31 @@ def get_return_type(func: Callable) -> object:
     return return_type
 
 
-# FIXME: API is wrong, it should accept function and its arguments
+class FunctionCall:
+    def __init__(self, func: Callable, args: Tuple, kwargs: Dict):
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+
 class ResultStore(Protocol):
-    def get_result(key: str) -> Any:
+    def get_result(self, call: FunctionCall) -> Any:
         ...
 
-    def store_result(key: str, result: Any) -> None:
+    def store_result(self, call: FunctionCall, result: Any) -> None:
         ...
     
-    def store_exception(key: str, exception: Exception) -> None:
+    def store_exception(self, call: FunctionCall, exception: Exception) -> None:
         ...
 
-def caching_decorator(func: Callable, key_func: Callable, store: ResultStore) -> Callable:
+def caching_decorator(func: Callable, store: ResultStore) -> Callable:
     return_type = get_return_type(func)
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        key = key_func(func, args, kwargs)
+        call = FunctionCall(func, args, kwargs)
         try:
-            cached_value = store.get_result(key)
+            cached_value = store.get_result(call)
             return wrap_in_future(return_type, cached_value)
         except KeyError:
             pass
@@ -183,14 +189,14 @@ def caching_decorator(func: Callable, key_func: Callable, store: ResultStore) ->
 
         def on_future_done(future):
             try:
-                store.store_result(key, future.result())
+                store.store_result(call, future.result())
             except Exception as exception:
-                store.store_exception(key, exception)
+                store.store_exception(call, exception)
 
         if is_future_type(result):
             result.add_done_callback(on_future_done)
         else:
-            store.store_result(key, result)
+            store.store_result(call, result)
 
         return result
 
@@ -201,16 +207,18 @@ def cached(cache: MutableMapping, key_func: Optional[Callable[[Callable, Tuple, 
         def __init__(self, cache: MutableMapping):
             self.cache = cache
 
-        def get_result(self, key):
+        def get_result(self, call: FunctionCall) -> Any:
+            key = key_func(call.func, call.args, call.kwargs)
             return self.cache[key]
 
-        def store_result(self, key, result):
+        def store_result(self, call: FunctionCall, result: Any) -> None:
+            key = key_func(call.func, call.args, call.kwargs)
             self.cache[key] = result
 
-        def store_exception(self, key, exception):
+        def store_exception(self, call: FunctionCall, exception: Exception) -> None:
             pass
 
-    return functools.partial(caching_decorator, key_func=key_func, store=DictResultStore(cache))
+    return functools.partial(caching_decorator, store=DictResultStore(cache))
 
 def observed(cache: MutableMapping, key: Callable[..., Any]) -> Callable:
     def decorator(func: Callable) -> Callable:

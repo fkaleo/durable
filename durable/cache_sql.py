@@ -1,22 +1,25 @@
 import functools
 import pickle
 import sqlite3
-from typing import Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
-from .durable import ResultStore, caching_decorator, key_for_function_call
+from .durable import (FunctionCall, ResultStore, caching_decorator,
+                      key_for_function_call)
 
 
 class SQLResultStore(ResultStore):
-    def __init__(self, connection_string, create_table_sql, select_sql, insert_sql):
+    def __init__(self, connection_string, create_table_sql, select_sql, insert_sql, key_func):
         self.connection = sqlite3.connect(connection_string)
         self.create_table_sql = create_table_sql
         self.select_sql = select_sql
         self.insert_sql = insert_sql
+        self.key_func = key_func
 
     def __del__(self):
         self.connection.close()
 
-    def get_result(self, key):
+    def get_result(self, call: FunctionCall) -> Any:
+        key = self.key_func(call.func, call.args, call.kwargs)
         cursor = self.connection.cursor()
         cursor.execute(self.select_sql, (key,))
         cached_result = cursor.fetchone()
@@ -27,13 +30,14 @@ class SQLResultStore(ResultStore):
         else:
             raise KeyError()
 
-    def store_result(self, key, result):
+    def store_result(self, call: FunctionCall, result: Any) -> None:
+        key = self.key_func(call.func, call.args, call.kwargs)
         serialized_result = pickle.dumps(result)
         cursor = self.connection.cursor()
         cursor.execute(self.insert_sql, (key, serialized_result))
         self.connection.commit()
 
-    def store_exception(self, key, exception):
+    def store_exception(self, call: FunctionCall, exception: Exception) -> None:
         pass
 
 
@@ -63,5 +67,5 @@ def sql_cached(connection_string: str,
     if key_func is None:
         key_func = key_for_function_call
 
-    store = SQLResultStore(connection_string, create_table_sql, select_sql, insert_sql)
-    return functools.partial(caching_decorator, key_func=key_func, store=store)
+    store = SQLResultStore(connection_string, create_table_sql, select_sql, insert_sql, key_func)
+    return functools.partial(caching_decorator, store=store)
