@@ -199,6 +199,8 @@ def caching_decorator(func: Callable, store: ResultStore) -> Callable:
                 store.store_exception(call, exception)
 
         if is_future_type(result):
+            # FIXME: on_future_done might be called from a different thread
+            # this is the case with Ray
             result.add_done_callback(on_future_done)
         else:
             store.store_result(call, result)
