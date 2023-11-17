@@ -138,7 +138,7 @@ def test_cache_key_sensitivity(cache, kwargs, expected):
     (async_add_in_thread, (2, 5), 7),
     (async_longer_add_in_thread, (2, 5), 7),
     # (async_add_with_dask, (33, 1), 34),
-    # (async_add_with_ray, (3, 1), 4),
+    (async_add_with_ray, (3, 1), 4),
 ])
 def test_cached_with_future(cache, func, args, expected):
     # Mock the original function
