@@ -1,4 +1,5 @@
 import functools
+from inspect import isclass
 import logging
 from math import exp
 import time
@@ -139,13 +140,13 @@ def test_cached_with_future(cache, func, args, expected):
     # Mock the original function
     mocked_func = create_autospec(func, side_effect=func)
 
-    # Apply the 'cache' decorator
-    if expected == TypeError:
+    if isclass(expected) and issubclass(expected, Exception):
         with pytest.raises(expected):
             cached_func = cache(mocked_func)
         return
-    else:
-        cached_func = cache(mocked_func)
+
+    # Apply the 'cache' decorator
+    cached_func = cache(mocked_func)
 
     result = cached_func(*args)
     future = None
