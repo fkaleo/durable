@@ -7,7 +7,7 @@ from .durable import (FunctionCall, ResultStore, caching_decorator,
                       key_for_function_call)
 
 
-class SQLResultStore(ResultStore):
+class SQLiteResultStore(ResultStore):
     def __init__(self, connection_string: str,
                         create_table_sql: Optional[str] = None, 
                         select_sql: Optional[str] = None, 
@@ -90,5 +90,5 @@ def sql_cached(connection_string: str,
     A decorator that caches the results of a function in a database.
     Allows customization of the SQL statements and the key generation logic.
     """
-    store = SQLResultStore(connection_string, create_table_sql, select_sql, insert_sql, key_func)
+    store = SQLiteResultStore(connection_string, create_table_sql, select_sql, insert_sql, key_func)
     return functools.partial(caching_decorator, store=store)
