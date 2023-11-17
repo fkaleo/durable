@@ -134,14 +134,7 @@ PENDING = None
 def is_future_type(type_: Type) -> bool:
     return isinstance(type_, FutureProtocol)
 
-def return_value_for_func(func: Callable, return_value: Any) -> Union[FutureProtocol, Any]:
-    # Determine if the function is supposed to return a Future
-    return_type = inspect.signature(func).return_annotation
-
-    # Check if the return type is declared
-    if return_type is inspect._empty:
-        raise TypeError("Function must have a declared return type")
-
+def wrap_in_future(return_type: object, return_value: Any) -> Union[FutureProtocol, Any]:
     # If the function is supposed to return a Future, wrap the cached value
     if is_future_type(return_type):
         # FIXME: Unfortunately we cannot always reconstruct the original future type
@@ -154,6 +147,15 @@ def return_value_for_func(func: Callable, return_value: Any) -> Union[FutureProt
         return return_value
 
 
+def get_return_type(func: Callable) -> object:
+    return_type = inspect.signature(func).return_annotation
+
+    # Check if the return type is declared
+    if return_type is inspect._empty:
+        raise TypeError("Function must have a declared return type")
+
+    return return_type
+
 class ResultStore(Protocol):
     def get_result(key: str) -> Any:
         ...
@@ -165,12 +167,14 @@ class ResultStore(Protocol):
         ...
 
 def caching_decorator(func: Callable, key_func: Callable, store: ResultStore) -> Callable:
+    return_type = get_return_type(func)
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         key = key_func(func, args, kwargs)
         try:
             cached_value = store.get_result(key)
-            return return_value_for_func(func, cached_value)
+            return wrap_in_future(return_type, cached_value)
         except KeyError:
             pass
 
