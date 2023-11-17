@@ -118,7 +118,6 @@ def async_add_with_dask(x, y) -> dask.distributed.Future:
     return future
 
 def async_add_with_ray(x, y) -> Future:
-    ray.init(ignore_reinit_error=True)
     return ray.remote(add).remote(x, y).future()
 
 @pytest.mark.parametrize("cache_fixture", [
@@ -126,6 +125,7 @@ def async_add_with_ray(x, y) -> Future:
     "functools_cache",
 ])
 @pytest.mark.parametrize("func, args, expected", [
+    (add, (10, 4), 14),
     (async_add_fake, (10, 3), 13),
     (async_add_in_thread, (2, 5), 7),
     (async_longer_add_in_thread, (2, 5), 7),
@@ -140,21 +140,30 @@ def test_cached_with_future(cache_fixture, func, args, expected, request):
     cache = request.getfixturevalue(cache_fixture)
     cached_func = cache(mocked_func)
 
-    future_result = cached_func(*args)
+    result = cached_func(*args)
+    future = None
 
-    assert isinstance(future_result, FutureProtocol), "The result should respect the Future Protocol"
-    assert future_result.result() == expected, f"The result of the future should be {expected}"
+    if isinstance(result, FutureProtocol):
+        future = result
+        result = future.result()
+
+    assert result == expected
     assert mocked_func.call_count == 1, "Function should be called once"
 
-    # Wait for the cache to be filled
-    # Some frameworks execute callbacks passed to Future.add_done_callback asynchronously
-    # FIXME: do it better
-    time.sleep(0.1)
+    if future is not None:
+        # Wait for the cache to be filled
+        # Some frameworks execute callbacks passed to Future.add_done_callback asynchronously
+        # FIXME: do it better
+        time.sleep(0.1)
 
     # Test the cache
     # Call the function again with the same arguments and ensure the cached result is returned
     cached_result = cached_func(*args)
-    assert cached_result.result() == expected, f"The cached result should be {expected}"
+
+    if isinstance(cached_result, FutureProtocol):
+        cached_result = cached_result.result()
+
+    assert cached_result == expected, f"The cached result should be {expected}"
     assert mocked_func.call_count == 1, "Function should not be called again, result should be from cache"
 
 
