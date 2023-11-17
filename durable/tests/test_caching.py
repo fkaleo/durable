@@ -77,20 +77,7 @@ def functools_cache():
 
 @pytest.fixture
 def connection_string(tmp_path):
-    # Setup: Create a new database for testing
-    import sqlite3
     connection_string = tmp_path / "test.db"
-    conn = sqlite3.connect(connection_string)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS cache (
-            key TEXT PRIMARY KEY,
-            result BLOB
-        )
-    """)
-    conn.commit()
-    conn.close()
-
     yield connection_string
 
 @pytest.fixture
