@@ -51,7 +51,7 @@ class SQLResultStore(ResultStore):
     def get_results(self, function_name: str) -> List[Any]:
         cursor = self.connection.cursor()
         select_sql = "SELECT function, args, result FROM cache WHERE function = ?"
-        cursor.execute(select_sql + " LIMIT 1", (function_name,))
+        cursor.execute(select_sql, (function_name,))
         for result in cursor.fetchall():
             yield result[0], result[1], pickle.loads(result[2])
 
