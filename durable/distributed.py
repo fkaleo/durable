@@ -6,15 +6,6 @@ from dask.distributed import get_client, fire_and_forget
 from durable.durable import FutureProtocol
 
 
-def ray_submit(func: Callable) -> Callable[..., FutureProtocol]:
-    @wraps(func)
-    def wrapper(*args, **kwargs) -> FutureProtocol:
-        if not ray.is_initialized():
-            ray.init(ignore_reinit_error=True)
-        return ray.remote(func).remote(*args, **kwargs).future()
-
-    return wrapper
-
 def ray_to_future(func: Callable[..., ray.ObjectRef]) -> Callable[..., FutureProtocol]:
     def wrapper(*args, **kwargs) -> FutureProtocol:
         object_ref = func.remote(*args, **kwargs)
