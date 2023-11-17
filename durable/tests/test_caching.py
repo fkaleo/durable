@@ -28,6 +28,22 @@ def multiply(x, y) -> Any:
 def add_without_return_hint(x, y):
     return x + y
 
+class NoStringRepresentation:
+    __str__ = None
+    __repr__ = None
+
+    def __init__(self, value) -> None:
+        self.value = value
+
+    def __hash__(self) -> int:
+        return hash(self.value)
+
+    def __eq__(self, other: "NoStringRepresentation") -> bool:
+        return self.value == other.value
+
+def no_string_representation(arg: NoStringRepresentation) -> NoStringRepresentation:
+    return NoStringRepresentation(arg.value)
+
 def async_add_fake(x, y) -> Future:
     future = Future()
     future.set_result(add(x, y))
@@ -116,6 +132,7 @@ def test_cache_key_sensitivity(cache, kwargs, expected):
 
 @pytest.mark.parametrize("func, args, expected", [
     (add, (10, 4), 14),
+    # (no_string_representation, (NoStringRepresentation(42),), NoStringRepresentation(42)),
     (add_without_return_hint, (10, 4), TypeError),
     (async_add_fake, (10, 3), 13),
     (async_add_in_thread, (2, 5), 7),
