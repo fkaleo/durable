@@ -10,7 +10,7 @@ def ray_to_future(func: Callable[..., ray.ObjectRef]) -> Callable[..., FuturePro
     def wrapper(*args, **kwargs) -> FutureProtocol:
         object_ref = func.remote(*args, **kwargs)
 
-        # make object_ref comaptible with FutureProtocol
+        # make object_ref compatible with FutureProtocol
         # note that .future() comes from https://github.com/ray-project/ray/pull/15425
         future = object_ref.future()
         object_ref.add_done_callback = future.add_done_callback
