@@ -150,7 +150,6 @@ def wrap_in_future(return_type: object, return_value: Any) -> Union[FutureProtoc
 def get_return_type(func: Callable) -> object:
     return_type = inspect.signature(func).return_annotation
 
-    # Check if the return type is declared
     if return_type is inspect._empty:
         raise TypeError("Function must have a declared return type")
 
