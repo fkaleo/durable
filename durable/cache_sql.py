@@ -17,7 +17,7 @@ class SQLResultStore(ResultStore):
 
         if create_table_sql is None:
             create_table_sql = """
-                CREATE TABLE IF NOT EXISTS cache (
+                CREATE TABLE IF NOT EXISTS function_calls (
                     function TEXT,
                     args TEXT,
                     result BLOB,
@@ -26,10 +26,10 @@ class SQLResultStore(ResultStore):
             """
 
         if select_sql is None:
-            select_sql = "SELECT result FROM cache WHERE function = ? AND args = ?"
+            select_sql = "SELECT result FROM function_calls WHERE function = ? AND args = ?"
 
         if insert_sql is None:
-            insert_sql = "INSERT INTO cache (function, args, result) VALUES (?, ?, ?)"
+            insert_sql = "INSERT INTO function_calls (function, args, result) VALUES (?, ?, ?)"
 
         if key_func is None:
             key_func = key_for_function_call
@@ -50,7 +50,7 @@ class SQLResultStore(ResultStore):
 
     def get_results(self, function_name: str) -> List[Any]:
         cursor = self.connection.cursor()
-        select_sql = "SELECT function, args, result FROM cache WHERE function = ?"
+        select_sql = "SELECT function, args, result FROM function_calls WHERE function = ?"
         cursor.execute(select_sql, (function_name,))
         for result in cursor.fetchall():
             yield result[0], result[1], pickle.loads(result[2])
