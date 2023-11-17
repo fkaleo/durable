@@ -1,13 +1,14 @@
 import functools
+import logging
 import time
-from concurrent.futures import ThreadPoolExecutor, Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any
 from unittest.mock import create_autospec
 
 import cachetools
 import dask.distributed
-import ray
 import pytest
+import ray
 
 from ..durable import FutureProtocol
 
@@ -118,6 +119,7 @@ def async_add_with_dask(x, y) -> dask.distributed.Future:
     return future
 
 def async_add_with_ray(x, y) -> Future:
+    ray.init(ignore_reinit_error=True, logging_level=logging.WARNING)
     return ray.remote(add).remote(x, y).future()
 
 @pytest.mark.parametrize("cache_fixture", [
