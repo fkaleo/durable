@@ -61,7 +61,7 @@ def compute_heavy_task(n) -> int:
 
 @pytest.fixture
 def durable(tmp_path):
-    from . import durable
+    from .. import durable
     durable.DEFAULT_CACHE_STORE_ID = str(tmp_path / "test_cache.db")
     durable.DEFAULT_CALL_STORE_ID = str(tmp_path / "test_call.db")
     yield durable
