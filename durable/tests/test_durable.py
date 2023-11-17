@@ -188,6 +188,3 @@ def test_benchmark_functions(benchmark, durable_cache, test_func, args, cache_ty
 
     # Verifying the result is as expected
     assert result == test_func(*args)
-    if hasattr(func_to_benchmark, "cache_info") and func_to_benchmark.cache_info is not None:
-        print(cache_type)
-        print(func_to_benchmark.cache_info())
