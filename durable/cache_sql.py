@@ -1,18 +1,18 @@
 import functools
 import pickle
 import sqlite3
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, List, Optional
 
-from .durable import (FunctionCall, ResultStore, caching_decorator,
-                      key_for_function_call)
+from sqlalchemy import create_engine, text
+
+from .durable import FunctionCall, ResultStore, caching_decorator
 
 
 class SQLiteResultStore(ResultStore):
     def __init__(self, connection_string: str,
                         create_table_sql: Optional[str] = None, 
                         select_sql: Optional[str] = None, 
-                        insert_sql: Optional[str] = None,
-                        key_func: Optional[Callable[[Callable, Tuple, Dict], str]] = None):
+                        insert_sql: Optional[str] = None):
         self.connection = sqlite3.connect(connection_string)
 
         if create_table_sql is None:
@@ -31,14 +31,10 @@ class SQLiteResultStore(ResultStore):
         if insert_sql is None:
             insert_sql = "INSERT INTO function_calls (function, args, result) VALUES (?, ?, ?)"
 
-        if key_func is None:
-            key_func = key_for_function_call
-
         self.create_table_sql = create_table_sql
         self._create_table()
         self.select_sql = select_sql
         self.insert_sql = insert_sql
-        self.key_func = key_func
 
     def __del__(self):
         self.connection.close()
@@ -84,8 +80,7 @@ class SQLiteResultStore(ResultStore):
 def sql_cached(connection_string: str,
                create_table_sql: Optional[str] = None, 
                select_sql: Optional[str] = None, 
-               insert_sql: Optional[str] = None,
-               key_func: Optional[Callable[[Callable, Tuple, Dict], str]] = None) -> Callable:
+               insert_sql: Optional[str] = None) -> Callable:
     """
     A decorator that caches the results of a function in a database.
     Allows customization of the SQL statements and the key generation logic.
