@@ -132,7 +132,7 @@ def test_cache_key_sensitivity(cache, kwargs, expected):
 
 @pytest.mark.parametrize("func, args, expected", [
     (add, (10, 4), 14),
-    # (no_string_representation, (NoStringRepresentation(42),), NoStringRepresentation(42)),
+    (no_string_representation, (NoStringRepresentation(42),), NoStringRepresentation(42)),
     (add_without_return_hint, (10, 4), TypeError),
     (async_add_fake, (10, 3), 13),
     (async_add_in_thread, (2, 5), 7),

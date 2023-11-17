@@ -53,12 +53,12 @@ class SQLResultStore(ResultStore):
         select_sql = "SELECT function, args, result FROM function_calls WHERE function = ?"
         cursor.execute(select_sql, (function_name,))
         for result in cursor.fetchall():
-            yield result[0], result[1], pickle.loads(result[2])
+            yield result[0], pickle.loads(result[1]), pickle.loads(result[2])
 
 
     def get_result(self, call: FunctionCall) -> Any:
         function_name = call.func.__name__
-        args_key = str(_make_key(call.args, kwds=call.kwargs, typed=False))
+        args_key = pickle.dumps({"args": call.args, "kwargs": call.kwargs})
 
         cursor = self.connection.cursor()
         cursor.execute(self.select_sql + " LIMIT 1", (function_name, args_key))
@@ -72,7 +72,7 @@ class SQLResultStore(ResultStore):
 
     def store_result(self, call: FunctionCall, result: Any) -> None:
         function_name = call.func.__name__
-        args_key = str(_make_key(call.args, kwds=call.kwargs, typed=False))
+        args_key = pickle.dumps({"args": call.args, "kwargs": call.kwargs})
 
         serialized_result = pickle.dumps(result)
         cursor = self.connection.cursor()

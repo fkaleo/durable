@@ -215,10 +215,11 @@ def _make_key_hash(args, kwds, typed=False):
     return key
 
 def key_for_function_call(func: Callable, args: Tuple, kwargs: Dict):
-    argskey = _make_key(args, kwds=kwargs, typed=False)
-    # argskey = _make_key_hash(args, kwds=kwargs, typed=False)
-    # argskey = f"{str(args)}_{str(kwargs)}"
-    return f"{path_from_func(func.__name__)}{argskey}"
+    args_key = pickle.dumps({"args": args, "kwargs": kwargs})
+    # args_key = _make_key(args, kwds=kwargs, typed=False)
+    # args_key = _make_key_hash(args, kwds=kwargs, typed=False)
+    # args_key = f"{str(args)}_{str(kwargs)}"
+    return f"{path_from_func(func.__name__)}{args_key}"
 
 class DictResultStore(ResultStore):
     def __init__(self, cache: MutableMapping):
