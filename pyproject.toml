@@ -8,6 +8,9 @@ authors = [
 dependencies = [
     "RocksDict>=0.3.17",
     "speedict>=0.3.11",
+    # pin setuptools to avoid some deprecation warnings
+    # see https://github.com/pypa/pip/pull/11997
+    "setuptools==67.7.2",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
