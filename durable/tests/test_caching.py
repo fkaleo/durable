@@ -58,6 +58,42 @@ def compute_heavy_task(n) -> int:
     return sum_of_primes
 
 
+def async_add_fake(x, y) -> Future:
+    future = Future()
+    future.set_result(add(x, y))
+    return future
+
+def async_add_in_thread(x, y) -> Future:
+    with ThreadPoolExecutor() as executor:
+        future = executor.submit(add, x, y)
+        return future
+
+def longer_add(x, y):
+    time.sleep(0.1)
+    return add(x, y)
+
+def async_longer_add_in_thread(x, y) -> Future:
+    with ThreadPoolExecutor() as executor:
+        future = executor.submit(longer_add, x, y)
+        return future
+
+@pytest.fixture(scope="module", autouse=False)
+def dask_client():
+    import dask.distributed
+    client = dask.distributed.Client()
+
+def async_add_with_dask(x, y) -> 'dask.distributed.Future':
+    import dask.distributed
+    client = dask.distributed.get_client()
+    future = client.submit(add, x, y)
+    return future
+
+def async_add_with_ray(x, y) -> Future:
+    import ray
+    ray.init(ignore_reinit_error=True, logging_level=logging.WARNING)
+    return ray.remote(add).remote(x, y).future()
+
+
 @pytest.fixture
 def durable_cache(tmp_path):
     from .. import durable
@@ -120,41 +156,6 @@ def test_cache_key_sensitivity(cache, kwargs, expected):
     # Test with different order of keyword arguments
     assert cached_func(**kwargs) == expected
 
-
-def async_add_fake(x, y) -> Future:
-    future = Future()
-    future.set_result(add(x, y))
-    return future
-
-def async_add_in_thread(x, y) -> Future:
-    with ThreadPoolExecutor() as executor:
-        future = executor.submit(add, x, y)
-        return future
-
-def longer_add(x, y):
-    time.sleep(0.1)
-    return add(x, y)
-
-def async_longer_add_in_thread(x, y) -> Future:
-    with ThreadPoolExecutor() as executor:
-        future = executor.submit(longer_add, x, y)
-        return future
-
-@pytest.fixture(scope="module", autouse=False)
-def dask_client():
-    import dask.distributed
-    client = dask.distributed.Client()
-
-def async_add_with_dask(x, y) -> 'dask.distributed.Future':
-    import dask.distributed
-    client = dask.distributed.get_client()
-    future = client.submit(add, x, y)
-    return future
-
-def async_add_with_ray(x, y) -> Future:
-    import ray
-    ray.init(ignore_reinit_error=True, logging_level=logging.WARNING)
-    return ray.remote(add).remote(x, y).future()
 
 @pytest.mark.parametrize("func, args, expected", [
     (add, (10, 4), 14),
