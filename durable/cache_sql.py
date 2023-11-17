@@ -55,15 +55,13 @@ class SQLResultStore(ResultStore):
         for result in cursor.fetchall():
             yield result[0], pickle.loads(result[1]), pickle.loads(result[2])
 
-
     def get_result(self, call: FunctionCall) -> Any:
         function_name = call.func.__name__
-        args_key = pickle.dumps({"args": call.args, "kwargs": call.kwargs})
+        serialized_args = pickle.dumps({"args": call.args, "kwargs": call.kwargs})
 
         cursor = self.connection.cursor()
-        cursor.execute(self.select_sql + " LIMIT 1", (function_name, args_key))
+        cursor.execute(self.select_sql, (function_name, serialized_args))
         cached_result = cursor.fetchone()
-
         if cached_result is not None:
             # Deserialize and return the cached result
             return pickle.loads(cached_result[0])
@@ -72,11 +70,11 @@ class SQLResultStore(ResultStore):
 
     def store_result(self, call: FunctionCall, result: Any) -> None:
         function_name = call.func.__name__
-        args_key = pickle.dumps({"args": call.args, "kwargs": call.kwargs})
+        serialized_args = pickle.dumps({"args": call.args, "kwargs": call.kwargs})
 
         serialized_result = pickle.dumps(result)
         cursor = self.connection.cursor()
-        cursor.execute(self.insert_sql, (function_name, args_key, serialized_result))
+        cursor.execute(self.insert_sql, (function_name, serialized_args, serialized_result))
         self.connection.commit()
 
     def store_exception(self, call: FunctionCall, exception: Exception) -> None:
