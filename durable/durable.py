@@ -5,7 +5,7 @@ import inspect
 from concurrent.futures import Future
 import pickle
 from typing import (KT, Any, Callable, ItemsView, Mapping, MutableMapping,
-                    Protocol, Type, VT_co, runtime_checkable)
+                    Protocol, Type, Union, VT_co, runtime_checkable)
 
 from rocksdict import AccessType, Rdict
 
@@ -134,49 +134,49 @@ PENDING = None
 def is_future_type(type_: Type) -> bool:
     return isinstance(type_, FutureProtocol)
 
+def return_value_for_func(func: Callable, return_value: Any) -> Union[FutureProtocol, Any]:
+    # Determine if the function is supposed to return a Future
+    return_type = inspect.signature(func).return_annotation
+
+    # Check if the return type is declared
+    if return_type is inspect._empty:
+        raise TypeError("Function must have a declared return type")
+
+    # If the function is supposed to return a Future, wrap the cached value
+    if is_future_type(return_type):
+        # FIXME: Unfortunately we cannot always reconstruct the original future type
+        # For example dask's distributed.Future cannot be instantiated simply
+        # We use concurrent.futures.Future instead
+        future = Future()
+        future.set_result(return_value)
+        return future
+    else:
+        return return_value
 
 def cached(cache: MutableMapping, key_func: Callable[..., Any]) -> Callable:
     def decorator(func: Callable) -> Callable:
-        # Determine if the function is supposed to return a Future
-        return_type = inspect.signature(func).return_annotation
-
-        # Check if the return type is declared
-        if return_type is inspect._empty:
-            raise TypeError("Function must have a declared return type")
-
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             key = key_func(*args, **kwargs)
             try:
                 cached_value = cache[key]
-                # If the function is supposed to return a Future, wrap the cached value
-                if is_future_type(return_type):
-                    # FIXME: Unfortunately we cannot always reconstruct the original future type
-                    # For example dask's distributed.Future cannot be instantiated simply
-                    # We use concurrent.futures.Future instead
-                    future = Future()
-                    future.set_result(cached_value)
-                    return future
-                else:
-                    return cached_value
-
+                return return_value_for_func(func, cached_value)
             except KeyError:
                 pass
 
             result = func(*args, **kwargs)
 
-            if is_future_type(result):
-                def on_future_done(future):
-                    try:
-                        cache[key] = future.result()
-                    except Exception as e:
-                        cache[key] = e # FIXME: should we store exceptions?
+            def on_future_done(future):
+                try:
+                    cache[key] = future.result()
+                except Exception as e:
+                    cache[key] = e # FIXME: should we store exceptions?
 
+            if is_future_type(result):
                 result.add_done_callback(on_future_done)
-                return result
             else:
                 cache[key] = result
-                return result
+            return result
 
         return wrapper
 
