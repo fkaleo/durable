@@ -9,7 +9,7 @@ import dask.distributed
 import ray
 import pytest
 
-from .durable import FutureProtocol
+from ..durable import FutureProtocol
 
 
 def donothing() -> None:
