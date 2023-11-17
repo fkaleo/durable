@@ -60,15 +60,19 @@ def compute_heavy_task(n) -> int:
 
 
 @pytest.fixture
-def durable(tmp_path):
+def durable_cache(tmp_path):
     from .. import durable
     durable.DEFAULT_CACHE_STORE_ID = str(tmp_path / "test_cache.db")
     durable.DEFAULT_CALL_STORE_ID = str(tmp_path / "test_call.db")
-    yield durable
+    yield durable.cache
+
+@pytest.fixture
+def functools_cache(tmp_path):
+    yield functools.cache
 
 @pytest.mark.parametrize("args,expected", [((1, 2), 3), ((3, 4), 7), ((5, 6), 11)])
-def test_caching(durable, args, expected):
-    cached_func = durable.cache(add)
+def test_caching(durable_cache, args, expected):
+    cached_func = durable_cache(add)
 
     # First call, result should be computed
     assert cached_func(*args) == expected
@@ -78,8 +82,8 @@ def test_caching(durable, args, expected):
 
 
 @pytest.mark.parametrize("kwargs,expected", [({'x': 7, 'y': 8}, 15), ({'y': 8, 'x': 7}, 15)])
-def test_cache_key_sensitivity(durable, kwargs, expected):
-    cached_func = durable.cache(add)
+def test_cache_key_sensitivity(durable_cache, kwargs, expected):
+    cached_func = durable_cache(add)
 
     # Test with different order of keyword arguments
     assert cached_func(**kwargs) == expected
@@ -117,6 +121,10 @@ def async_add_with_ray(x, y) -> Future:
     ray.init(ignore_reinit_error=True)
     return ray.remote(add).remote(x, y).future()
 
+@pytest.mark.parametrize("cache_fixture", [
+    "durable_cache",
+    "functools_cache",
+])
 @pytest.mark.parametrize("func, args, expected", [
     (async_add_fake, (10, 3), 13),
     (async_add_in_thread, (2, 5), 7),
@@ -124,12 +132,13 @@ def async_add_with_ray(x, y) -> Future:
     (async_add_with_dask, (33, 1), 34),
     (async_add_with_ray, (3, 1), 4),
 ])
-def test_cached_with_future(durable, func, args, expected):
+def test_cached_with_future(cache_fixture, func, args, expected, request):
     # Mock the original function
     mocked_func = create_autospec(func, side_effect=func)
 
-    # Apply the 'cached' decorator
-    cached_func = durable.cache(mocked_func)
+    # Apply the 'cache' decorator defined by the 'cache_fixture'
+    cache = request.getfixturevalue(cache_fixture)
+    cached_func = cache(mocked_func)
 
     future_result = cached_func(*args)
 
@@ -155,9 +164,9 @@ def test_cached_with_future(durable, func, args, expected):
                                              (donothing_singlearg, (100,)),
                                              (fibonacci, (100,)),
                                              ])
-def test_benchmark_functions(benchmark, durable, test_func, args, cache_type):
+def test_benchmark_functions(benchmark, durable_cache, test_func, args, cache_type):
     if cache_type == 'durable':
-        func_to_benchmark = durable.cache(test_func)
+        func_to_benchmark = durable_cache(test_func)
     elif cache_type == 'functools':
         func_to_benchmark = functools.cache(test_func)
     elif cache_type == 'cachetools':
