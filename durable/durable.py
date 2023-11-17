@@ -1,7 +1,9 @@
 # from speedict import Rdict
 import functools
+import hashlib
 import inspect
 from concurrent.futures import Future
+import pickle
 from typing import (KT, Any, Callable, ItemsView, Mapping, MutableMapping,
                     Protocol, Type, VT_co, runtime_checkable)
 
@@ -209,6 +211,11 @@ def get_store(store_id, access_type: AccessType = AccessType.read_only()):
 
 def path_from_func(func: Callable):
     return f"/{func.__name__}/"
+
+def _make_key_hash(args, kwds, typed=False):
+    key_data = (args, frozenset(kwds.items()))
+    key = hashlib.md5(pickle.dumps(key_data)).hexdigest()
+    return key
 
 def key_for_function_call(func, *args, **kwargs):
     argskey = _make_key(args, kwds=kwargs, typed=False)
