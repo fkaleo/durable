@@ -93,7 +93,7 @@ def functools_cache():
 
 @pytest.fixture
 def connection_string(tmp_path):
-    connection_string = tmp_path / "test.db"
+    connection_string = "sqlite:///" + str(tmp_path / "test.db")
     yield connection_string
 
 @pytest.fixture
