@@ -3,6 +3,7 @@ import functools
 import hashlib
 import inspect
 from concurrent.futures import Future
+import logging
 import pickle
 from typing import (KT, Any, Callable, Dict, ItemsView, List, Mapping, MutableMapping, Optional,
                     Protocol, Tuple, Type, Union, VT_co, runtime_checkable)
@@ -194,6 +195,7 @@ def caching_decorator(func: Callable, store: ResultStore) -> Callable:
             try:
                 store.store_result(call, future.result())
             except Exception as exception:
+                logging.warning("Exception: %s", exception)
                 store.store_exception(call, exception)
 
         if is_future_type(result):
