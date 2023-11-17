@@ -4,7 +4,8 @@ import pickle
 import hashlib
 from typing import Callable, Any, Optional, Dict, Tuple
 
-def sql_cached(create_table_sql: Optional[str] = None, 
+def sql_cached(connection_string: str,
+               create_table_sql: Optional[str] = None, 
                select_sql: Optional[str] = None, 
                insert_sql: Optional[str] = None,
                key_gen_func: Optional[Callable[[Callable, Tuple, Dict], str]] = None) -> Callable:
@@ -36,7 +37,7 @@ def sql_cached(create_table_sql: Optional[str] = None,
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> Any:
-            conn = sqlite3.connect("example.db")  # Adjust this for your specific DB connection
+            conn = sqlite3.connect(connection_string)
             cursor = conn.cursor()
 
             # Execute the provided CREATE TABLE SQL
