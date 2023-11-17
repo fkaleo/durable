@@ -1,38 +1,35 @@
-from concurrent.futures import Future
 import ray
 from typing import Any, Callable, Optional
 from functools import wraps
 from dask.distributed import get_client, fire_and_forget
 
+from durable.durable import FutureProtocol
 
-def distributed(func: Callable) -> Callable[..., Future]:
-    """
-    Decorator to convert a function into its asynchronous version using Ray.
-    """
 
+def ray_submit(func: Callable) -> Callable[..., FutureProtocol]:
     @wraps(func)
-    def wrapper(*args, **kwargs) -> Future:
-        # Initialize Ray if not already done
+    def wrapper(*args, **kwargs) -> FutureProtocol:
         if not ray.is_initialized():
             ray.init(ignore_reinit_error=True)
-
-        # Convert the function to a Ray remote function
-        remote_func = ray.remote(func)
-
-        # Execute the function asynchronously and return a future
-        return remote_func.remote(*args, **kwargs).future()
+        return ray.remote(func).remote(*args, **kwargs).future()
 
     return wrapper
 
-def ray_to_future(func: Callable[..., ray.ObjectRef]) -> Callable[..., Future]:
-    def wrapper(*args, **kwargs) -> Future:
-        return func.remote(*args, **kwargs).future()
+def ray_to_future(func: Callable[..., ray.ObjectRef]) -> Callable[..., FutureProtocol]:
+    def wrapper(*args, **kwargs) -> FutureProtocol:
+        object_ref = func.remote(*args, **kwargs)
+
+        # make object_ref comaptible with FutureProtocol
+        future = object_ref.future()
+        object_ref.add_done_callback = future.add_done_callback
+        object_ref.result = future.result
+        return object_ref
 
     return wrapper
 
-
-def dask_submit(_func: Optional[Callable] = None, **submit_kwargs: Any) -> Callable[[Callable], Callable[..., Future]]:
-    def decorator(func) -> Callable[..., Future]:
+# same idea as https://github.com/dask/distributed/pull/7936
+def dask_submit(_func: Optional[Callable] = None, **submit_kwargs: Any) -> Callable[[Callable], Callable[..., FutureProtocol]]:
+    def decorator(func) -> Callable[..., FutureProtocol]:
         @wraps(func)
         def wrapper(*args, **kwargs):
             client = get_client()
