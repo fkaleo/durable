@@ -21,7 +21,8 @@ def ray_to_future(func: Callable[..., ray.ObjectRef]) -> Callable[..., FuturePro
     return wrapper
 
 # same idea as https://github.com/dask/distributed/pull/7936
-def dask_submit(_func: Optional[Callable] = None, **submit_kwargs: Any) -> Union[Callable[[Callable[..., Any]], Callable[..., FutureProtocol]], Callable[..., FutureProtocol]]:
+def dask_submit(_func: Optional[Callable] = None, **submit_kwargs: Any) -> Union[Callable[[Callable[..., Any]], Callable[..., FutureProtocol]],
+                                                                                 Callable[..., FutureProtocol]]:
     def decorator(func: Callable[..., Any]) -> Callable[..., FutureProtocol]:
         @wraps(func)
         def wrapper(*args, **kwargs) -> FutureProtocol:
