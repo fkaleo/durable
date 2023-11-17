@@ -155,6 +155,8 @@ def get_return_type(func: Callable) -> object:
 
     return return_type
 
+
+# FIXME: API is wrong, it should accept function and its arguments
 class ResultStore(Protocol):
     def get_result(key: str) -> Any:
         ...
