@@ -4,7 +4,7 @@ import hashlib
 import inspect
 from concurrent.futures import Future
 import pickle
-from typing import (KT, Any, Callable, Dict, ItemsView, Mapping, MutableMapping, Optional,
+from typing import (KT, Any, Callable, Dict, ItemsView, List, Mapping, MutableMapping, Optional,
                     Protocol, Tuple, Type, Union, VT_co, runtime_checkable)
 
 from rocksdict import AccessType, Rdict
@@ -164,6 +164,9 @@ class FunctionCall:
 
 
 class ResultStore(Protocol):
+    def get_results(self, function_name: str) -> List[Any]:
+        ...
+
     def get_result(self, call: FunctionCall) -> Any:
         ...
 
@@ -202,23 +205,41 @@ def caching_decorator(func: Callable, store: ResultStore) -> Callable:
 
     return wrapper
 
-def cached(cache: MutableMapping, key_func: Optional[Callable[[Callable, Tuple, Dict], str]] = None) -> Callable:
-    class DictResultStore(ResultStore):
-        def __init__(self, cache: MutableMapping):
-            self.cache = cache
 
-        def get_result(self, call: FunctionCall) -> Any:
-            key = key_func(call.func, call.args, call.kwargs)
-            return self.cache[key]
+def path_from_func(function_name: str):
+    return f"/{function_name}/"
 
-        def store_result(self, call: FunctionCall, result: Any) -> None:
-            key = key_func(call.func, call.args, call.kwargs)
-            self.cache[key] = result
+def _make_key_hash(args, kwds, typed=False):
+    key_data = (args, frozenset(kwds.items()))
+    key = hashlib.md5(pickle.dumps(key_data)).hexdigest()
+    return key
 
-        def store_exception(self, call: FunctionCall, exception: Exception) -> None:
-            pass
+def key_for_function_call(func: Callable, args: Tuple, kwargs: Dict):
+    argskey = _make_key(args, kwds=kwargs, typed=False)
+    # argskey = _make_key_hash(args, kwds=kwargs, typed=False)
+    # argskey = f"{str(args)}_{str(kwargs)}"
+    return f"{path_from_func(func.__name__)}{argskey}"
 
-    return functools.partial(caching_decorator, store=DictResultStore(cache))
+class DictResultStore(ResultStore):
+    def __init__(self, cache: MutableMapping):
+        self.cache = cache
+
+    def get_results(self, function_name: str) -> List[Any]:
+        # FIXME: assumes self.cache is compatible with SortedItems
+        for key, value in keys_with_prefix(self.cache, path_from_func(function_name)):
+            yield key, value
+
+    def get_result(self, call: FunctionCall) -> Any:
+        key = key_for_function_call(call.func, call.args, call.kwargs)
+        return self.cache[key]
+
+    def store_result(self, call: FunctionCall, result: Any) -> None:
+        key = key_for_function_call(call.func, call.args, call.kwargs)
+        self.cache[key] = result
+
+    def store_exception(self, call: FunctionCall, exception: Exception) -> None:
+        pass
+
 
 def observed(cache: MutableMapping, key: Callable[..., Any]) -> Callable:
     def decorator(func: Callable) -> Callable:
@@ -247,28 +268,16 @@ def get_store(store_id, access_type: AccessType = AccessType.read_only()):
     # FIXME: should close RDict upon deletion; make it a context manager?
     return store
 
-def path_from_func(func: Callable):
-    return f"/{func.__name__}/"
-
-def _make_key_hash(args, kwds, typed=False):
-    key_data = (args, frozenset(kwds.items()))
-    key = hashlib.md5(pickle.dumps(key_data)).hexdigest()
-    return key
-
-def key_for_function_call(func: Callable, args: Tuple, kwargs: Dict):
-    argskey = _make_key(args, kwds=kwargs, typed=False)
-    # argskey = _make_key_hash(args, kwds=kwargs, typed=False)
-    # argskey = f"{str(args)}_{str(kwargs)}"
-    return f"{path_from_func(func)}{argskey}"
 
 def cache(func: Callable, store_id: str = None) -> Callable:
     if not store_id:
         store_id = DEFAULT_CACHE_STORE_ID
     store = get_store(store_id, AccessType.read_write())
-    return cached(cache=store, key_func=key_for_function_call)(func)
+    return caching_decorator(func, store=DictResultStore(store))
 
 def observe(func: Callable, store_id: str = None) -> Callable:
     if not store_id:
         store_id = DEFAULT_CALL_STORE_ID
     store = get_store(store_id, AccessType.read_write())
-    return observed(cache=store, key=key_for_function_call)(func)
+    return observed(cache=store)(func)
+
