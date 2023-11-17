@@ -19,7 +19,7 @@ class SQLResultStore(ResultStore):
             create_table_sql = """
                 CREATE TABLE IF NOT EXISTS function_calls (
                     function TEXT,
-                    args TEXT,
+                    args BLOB,
                     result BLOB,
                     PRIMARY KEY (function, args)
                 )
