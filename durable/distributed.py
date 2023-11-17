@@ -1,7 +1,8 @@
-import ray
-from typing import Any, Callable, Optional
 from functools import wraps
-from dask.distributed import get_client, fire_and_forget
+from typing import Any, Callable, Optional, Union
+
+import ray
+from dask.distributed import fire_and_forget, get_client
 
 from durable.durable import FutureProtocol
 
@@ -20,10 +21,10 @@ def ray_to_future(func: Callable[..., ray.ObjectRef]) -> Callable[..., FuturePro
     return wrapper
 
 # same idea as https://github.com/dask/distributed/pull/7936
-def dask_submit(_func: Optional[Callable] = None, **submit_kwargs: Any) -> Callable[[Callable], Callable[..., FutureProtocol]]:
-    def decorator(func) -> Callable[..., FutureProtocol]:
+def dask_submit(_func: Optional[Callable] = None, **submit_kwargs: Any) -> Union[Callable[[Callable[..., Any]], Callable[..., FutureProtocol]], Callable[..., FutureProtocol]]:
+    def decorator(func: Callable[..., Any]) -> Callable[..., FutureProtocol]:
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, **kwargs) -> FutureProtocol:
             client = get_client()
             future = client.submit(func, *args, **submit_kwargs, **kwargs)
             fire_and_forget(future)
