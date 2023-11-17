@@ -4,8 +4,8 @@ import hashlib
 import inspect
 from concurrent.futures import Future
 import pickle
-from typing import (KT, Any, Callable, ItemsView, Mapping, MutableMapping,
-                    Protocol, Type, Union, VT_co, runtime_checkable)
+from typing import (KT, Any, Callable, Dict, ItemsView, Mapping, MutableMapping, Optional,
+                    Protocol, Tuple, Type, Union, VT_co, runtime_checkable)
 
 from rocksdict import AccessType, Rdict
 
@@ -153,7 +153,7 @@ def return_value_for_func(func: Callable, return_value: Any) -> Union[FutureProt
     else:
         return return_value
 
-def cached(cache: MutableMapping, key_func: Callable[..., Any]) -> Callable:
+def cached(cache: MutableMapping, key_func: Optional[Callable[[Callable, Tuple, Dict], str]] = None) -> Callable:
     def get_result(key):
         return cache[key]
 
@@ -166,7 +166,7 @@ def cached(cache: MutableMapping, key_func: Callable[..., Any]) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            key = key_func(*args, **kwargs)
+            key = key_func(func, args, kwargs)
             try:
                 cached_value = get_result(key)
                 return return_value_for_func(func, cached_value)
@@ -177,9 +177,9 @@ def cached(cache: MutableMapping, key_func: Callable[..., Any]) -> Callable:
 
             def on_future_done(future):
                 try:
-                    store_result(future.result())
+                    store_result(key, future.result())
                 except Exception as exception:
-                    store_exception(exception)
+                    store_exception(key, exception)
 
             if is_future_type(result):
                 result.add_done_callback(on_future_done)
@@ -227,8 +227,9 @@ def _make_key_hash(args, kwds, typed=False):
     key = hashlib.md5(pickle.dumps(key_data)).hexdigest()
     return key
 
-def key_for_function_call(func, *args, **kwargs):
+def key_for_function_call(func: Callable, args: Tuple, kwargs: Dict):
     argskey = _make_key(args, kwds=kwargs, typed=False)
+    # argskey = _make_key_hash(args, kwds=kwargs, typed=False)
     # argskey = f"{str(args)}_{str(kwargs)}"
     return f"{path_from_func(func)}{argskey}"
 
@@ -236,10 +237,10 @@ def cache(func: Callable, store_id: str = None) -> Callable:
     if not store_id:
         store_id = DEFAULT_CACHE_STORE_ID
     store = get_store(store_id, AccessType.read_write())
-    return cached(cache=store, key_func=functools.partial(key_for_function_call, func))(func)
+    return cached(cache=store, key_func=key_for_function_call)(func)
 
 def observe(func: Callable, store_id: str = None) -> Callable:
     if not store_id:
         store_id = DEFAULT_CALL_STORE_ID
     store = get_store(store_id, AccessType.read_write())
-    return observed(cache=store, key=functools.partial(key_for_function_call, func))(func)
+    return observed(cache=store, key=key_for_function_call)(func)
