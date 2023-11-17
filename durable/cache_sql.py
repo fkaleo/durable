@@ -55,7 +55,7 @@ def sql_cached(connection_string: str,
         """
 
     if select_sql is None:
-        select_sql = "SELECT result FROM cache WHERE key = ?"
+        select_sql = "SELECT result FROM cache WHERE key = ? LIMIT 1"
 
     if insert_sql is None:
         insert_sql = "INSERT INTO cache (key, result) VALUES (?, ?)"
