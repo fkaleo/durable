@@ -68,7 +68,7 @@ def durable_cache(tmp_path):
     yield durable.cache
 
 @pytest.fixture
-def functools_cache(tmp_path):
+def functools_cache():
     yield functools.cache
 
 
