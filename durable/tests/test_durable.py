@@ -71,10 +71,34 @@ def durable_cache(tmp_path):
 def functools_cache():
     yield functools.cache
 
+@pytest.fixture
+def connection_string(tmp_path):
+    # Setup: Create a new database for testing
+    import sqlite3
+    connection_string = tmp_path / "test.db"
+    conn = sqlite3.connect(connection_string)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS cache (
+            key TEXT PRIMARY KEY,
+            result BLOB
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+    yield connection_string
+
+@pytest.fixture
+def sql_cache(connection_string):
+    from ..cache_sql import sql_cached
+    yield sql_cached(connection_string)
+
 
 @pytest.fixture(params=[
     "durable_cache",
     "functools_cache",
+    "sql_cache",
 ])
 def cache(request):
     cache = request.getfixturevalue(request.param)
