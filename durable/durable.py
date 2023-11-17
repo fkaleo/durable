@@ -153,44 +153,59 @@ def return_value_for_func(func: Callable, return_value: Any) -> Union[FutureProt
     else:
         return return_value
 
-def cached(cache: MutableMapping, key_func: Optional[Callable[[Callable, Tuple, Dict], str]] = None) -> Callable:
-    def get_result(key):
-        return cache[key]
 
-    def store_result(key, result):
-        cache[key] = result
+class ResultStore(Protocol):
+    def get_result(key: str) -> Any:
+        ...
 
-    def store_exception(key, exception):
-        pass
+    def store_result(key: str, result: Any) -> None:
+        ...
+    
+    def store_exception(key: str, exception: Exception) -> None:
+        ...
 
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            key = key_func(func, args, kwargs)
+def caching_decorator(func: Callable, key_func: Callable, store: ResultStore) -> Callable:
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        key = key_func(func, args, kwargs)
+        try:
+            cached_value = store.get_result(key)
+            return return_value_for_func(func, cached_value)
+        except KeyError:
+            pass
+
+        result = func(*args, **kwargs)
+
+        def on_future_done(future):
             try:
-                cached_value = get_result(key)
-                return return_value_for_func(func, cached_value)
-            except KeyError:
-                pass
+                store.store_result(key, future.result())
+            except Exception as exception:
+                store.store_exception(key, exception)
 
-            result = func(*args, **kwargs)
+        if is_future_type(result):
+            result.add_done_callback(on_future_done)
+        else:
+            store.store_result(key, result)
 
-            def on_future_done(future):
-                try:
-                    store_result(key, future.result())
-                except Exception as exception:
-                    store_exception(key, exception)
+        return result
 
-            if is_future_type(result):
-                result.add_done_callback(on_future_done)
-            else:
-                store_result(key, result)
+    return wrapper
 
-            return result
+def cached(cache: MutableMapping, key_func: Optional[Callable[[Callable, Tuple, Dict], str]] = None) -> Callable:
+    class DictResultStore(ResultStore):
+        def __init__(self, cache: MutableMapping):
+            self.cache = cache
 
-        return wrapper
+        def get_result(self, key):
+            return self.cache[key]
 
-    return decorator
+        def store_result(self, key, result):
+            self.cache[key] = result
+
+        def store_exception(self, key, exception):
+            pass
+
+    return functools.partial(caching_decorator, key_func=key_func, store=DictResultStore(cache))
 
 def observed(cache: MutableMapping, key: Callable[..., Any]) -> Callable:
     def decorator(func: Callable) -> Callable:
