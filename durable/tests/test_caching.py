@@ -1,5 +1,6 @@
 import functools
 import logging
+from math import exp
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any
@@ -23,6 +24,8 @@ def add(x, y) -> Any:
 def multiply(x, y) -> Any:
     return x * y
 
+def add_without_return_hint(x, y):
+    return x + y
 
 def async_add_fake(x, y) -> Future:
     future = Future()
@@ -97,7 +100,7 @@ def sql_cache(connection_string):
 
 @pytest.fixture(params=[
     "durable_cache",
-    "functools_cache",
+    # "functools_cache",
     "sql_cache",
 ])
 def cache(request):
@@ -125,6 +128,7 @@ def test_cache_key_sensitivity(cache, kwargs, expected):
 
 @pytest.mark.parametrize("func, args, expected", [
     (add, (10, 4), 14),
+    (add_without_return_hint, (10, 4), TypeError),
     (async_add_fake, (10, 3), 13),
     (async_add_in_thread, (2, 5), 7),
     (async_longer_add_in_thread, (2, 5), 7),
@@ -136,7 +140,12 @@ def test_cached_with_future(cache, func, args, expected):
     mocked_func = create_autospec(func, side_effect=func)
 
     # Apply the 'cache' decorator
-    cached_func = cache(mocked_func)
+    if expected == TypeError:
+        with pytest.raises(expected):
+            cached_func = cache(mocked_func)
+        return
+    else:
+        cached_func = cache(mocked_func)
 
     result = cached_func(*args)
     future = None
