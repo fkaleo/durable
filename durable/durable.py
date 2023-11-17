@@ -154,12 +154,21 @@ def return_value_for_func(func: Callable, return_value: Any) -> Union[FutureProt
         return return_value
 
 def cached(cache: MutableMapping, key_func: Callable[..., Any]) -> Callable:
+    def get_result(key):
+        return cache[key]
+
+    def store_result(key, result):
+        cache[key] = result
+
+    def store_exception(key, exception):
+        pass
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             key = key_func(*args, **kwargs)
             try:
-                cached_value = cache[key]
+                cached_value = get_result(key)
                 return return_value_for_func(func, cached_value)
             except KeyError:
                 pass
@@ -168,14 +177,15 @@ def cached(cache: MutableMapping, key_func: Callable[..., Any]) -> Callable:
 
             def on_future_done(future):
                 try:
-                    cache[key] = future.result()
-                except Exception as e:
-                    cache[key] = e # FIXME: should we store exceptions?
+                    store_result(future.result())
+                except Exception as exception:
+                    store_exception(exception)
 
             if is_future_type(result):
                 result.add_done_callback(on_future_done)
             else:
-                cache[key] = result
+                store_result(key, result)
+
             return result
 
         return wrapper
