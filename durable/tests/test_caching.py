@@ -23,40 +23,6 @@ def add(x, y) -> Any:
 def multiply(x, y) -> Any:
     return x * y
 
-def fibonacci(n) -> int:
-    """Generate Fibonacci sequence up to n"""
-    a, b = 0, 1
-    sequence = []
-    while a < n:
-        sequence.append(a)
-        a, b = b, a + b
-    return sequence
-
-
-def is_prime(num) -> bool:
-    if num <= 1:
-        return False
-    for i in range(2, int(num**0.5) + 1):
-        if num % i == 0:
-            return False
-    return True
-
-
-def compute_heavy_task(n) -> int:
-    """ A function that performs a computationally heavy task and returns an integer.
-        This function calculates the sum of the first n prime numbers.
-    """
-
-    sum_of_primes, count, current_num = 0, 0, 2
-
-    while count < n:
-        if is_prime(current_num):
-            sum_of_primes += current_num
-            count += 1
-        current_num += 1
-
-    return sum_of_primes
-
 
 def async_add_fake(x, y) -> Future:
     future = Future()
@@ -197,6 +163,42 @@ def test_cached_with_future(cache, func, args, expected):
 
     assert cached_result == expected, f"The cached result should be {expected}"
     assert mocked_func.call_count == 1, "Function should not be called again, result should be from cache"
+
+
+
+def fibonacci(n) -> int:
+    """Generate Fibonacci sequence up to n"""
+    a, b = 0, 1
+    sequence = []
+    while a < n:
+        sequence.append(a)
+        a, b = b, a + b
+    return sequence
+
+
+def is_prime(num) -> bool:
+    if num <= 1:
+        return False
+    for i in range(2, int(num**0.5) + 1):
+        if num % i == 0:
+            return False
+    return True
+
+
+def compute_heavy_task(n) -> int:
+    """ A function that performs a computationally heavy task and returns an integer.
+        This function calculates the sum of the first n prime numbers.
+    """
+
+    sum_of_primes, count, current_num = 0, 0, 2
+
+    while count < n:
+        if is_prime(current_num):
+            sum_of_primes += current_num
+            count += 1
+        current_num += 1
+
+    return sum_of_primes
 
 
 @pytest.mark.parametrize("cache_type", ['durable', 'functools', 'none', 'cachetools'])
