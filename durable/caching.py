@@ -31,6 +31,51 @@ def _wrap_in_future(return_type: object, return_value: Any) -> Union[FutureProto
 
 
 def caching_decorator(func: Callable, store: ResultStore) -> Callable:
+    """
+    Decorator that caches the results of function calls using a specified result store.
+
+    This decorator wraps a function and caches its return values in the provided
+    ResultStore. On subsequent calls with the same arguments, the cached result
+    is returned instead of executing the function again. The decorator handles 
+    both regular and asynchronous (future-based) function calls.
+
+    Parameters
+    ----------
+    func : Callable
+        The function to be wrapped and whose results are to be cached.
+    store : ResultStore
+        An instance of ResultStore or its implementation, used to store and 
+        retrieve cached results.
+
+    Returns
+    -------
+    Callable
+        A wrapped version of `func` that implements caching of its return values.
+
+    Notes
+    -----
+    - The caching logic uses the arguments of the function call to determine uniqueness.
+    - For asynchronous functions (returning a future), the result is stored once
+      the future is resolved. Exceptions during execution are also stored.
+    - The decorator assumes that `store` implements the methods specified in the 
+      ResultStore protocol.
+
+    Examples
+    --------
+    >>> class MyStore(ResultStore):
+    ...     # Implement the required methods
+    ...     pass
+    ...
+    >>> @caching_decorator
+    ... def my_function(x):
+    ...     return x * x
+    ...
+    >>> store = MyStore()
+    >>> cached_func = caching_decorator(my_function, store)
+    >>> cached_func(4)
+    16
+    >>> # Subsequent calls with 4 will return the cached result 16
+    """
     return_type = _get_return_type(func)
 
     @functools.wraps(func)
