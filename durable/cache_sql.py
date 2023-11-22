@@ -13,7 +13,8 @@ class SQLAlchemyResultStore(ResultStore):
                  create_table_sql: Optional[str] = None,
                  select_sql: Optional[str] = None,
                 insert_sql: Optional[str] = None):
-        self.engine = create_engine(connection_string, echo=False, connect_args={"check_same_thread": False})
+        self.connection_string = connection_string
+        self.engine = None
 
         if create_table_sql is None:
             create_table_sql = """
@@ -36,12 +37,18 @@ class SQLAlchemyResultStore(ResultStore):
         self.select_sql = select_sql
         self.insert_sql = insert_sql
 
+    def _ensure_engine(self):
+        if self.engine is None:
+            self.engine = create_engine(self.connection_string, echo=False, connect_args={"check_same_thread": False})
+
     def _create_table(self):
+        self._ensure_engine()
         with self.engine.connect() as connection:
             connection.execute(text(self.create_table_sql))
             connection.commit()
 
     def get_function_calls(self, function_name: str) -> List[Any]:
+        self._ensure_engine()
         with self.engine.connect() as connection:
             select_sql = "SELECT function, args, result FROM function_calls WHERE function = :function"
             result = connection.execute(text(select_sql), {"function": function_name})
@@ -49,6 +56,7 @@ class SQLAlchemyResultStore(ResultStore):
                 yield row[0], pickle.loads(row[1]), pickle.loads(row[2])
 
     def get_result(self, call: FunctionCall) -> Any:
+        self._ensure_engine()
         function_name = call.func.__name__
         serialized_args = pickle.dumps({"args": call.args, "kwargs": call.kwargs})
 
@@ -60,6 +68,7 @@ class SQLAlchemyResultStore(ResultStore):
                 raise KeyError()
 
     def store_result(self, call: FunctionCall, result: Any) -> None:
+        self._ensure_engine()
         function_name = call.func.__name__
         serialized_args = pickle.dumps({"args": call.args, "kwargs": call.kwargs})
         serialized_result = pickle.dumps(result)
