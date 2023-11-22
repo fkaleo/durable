@@ -4,8 +4,8 @@ from typing import Any, Callable, List, Optional
 
 from sqlalchemy import create_engine, text
 
-from .durable import FunctionCall, ResultStore, caching_decorator
-
+from .durable import caching_decorator
+from .function_store import FunctionCall, ResultStore
 
 
 class SQLAlchemyResultStore(ResultStore):

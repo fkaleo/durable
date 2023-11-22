@@ -1,7 +1,7 @@
 from functools import wraps
 from typing import Any, Callable, Optional, Union
 
-from .durable import FutureProtocol
+from .future import FutureProtocol
 
 
 # same idea as https://github.com/dask/distributed/pull/7936

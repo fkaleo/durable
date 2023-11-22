@@ -9,7 +9,7 @@ from unittest.mock import create_autospec
 import cachetools
 import pytest
 
-from ..durable import FutureProtocol
+from ..future import FutureProtocol
 
 
 def donothing() -> None:

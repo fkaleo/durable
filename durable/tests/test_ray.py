@@ -3,7 +3,7 @@ import pytest
 import ray
 
 from ..ray import remote_and_cached, submit
-from ..durable import FutureProtocol
+from ..future import FutureProtocol
 
 
 @pytest.fixture(scope="session", autouse=True)

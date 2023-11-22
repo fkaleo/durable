@@ -5,8 +5,7 @@ from typing import Callable
 import ray
 
 from .cache_sql import sql_cached
-from .durable import FutureProtocol
-from .future import result_from_future
+from .future import result_from_future, FutureProtocol
 from .unique import ensure_unique
 
 

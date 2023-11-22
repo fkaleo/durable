@@ -2,13 +2,16 @@
 import functools
 import hashlib
 import inspect
-from concurrent.futures import Future
 import logging
 import pickle
-from typing import (KT, Any, Callable, Dict, ItemsView, List, Mapping, MutableMapping,
-                    Protocol, Tuple, Type, Union, VT_co, runtime_checkable)
+from typing import (KT, Any, Callable, Dict, ItemsView, List, Mapping,
+                    MutableMapping, Protocol, Tuple, VT_co)
 
 from rocksdict import AccessType, Rdict
+
+from .function_store import FunctionCall, ResultStore
+from .future import is_future_type, _wrap_in_future
+
 
 class _HashedSeq(list):
     """ This class guarantees that hash() will be called no more than once
@@ -118,35 +121,7 @@ def keys_with_prefix(store: SortedItems, prefix: str):
 # Protocol @cache requires:
 # set_call_result(func, *args, **kwargs)
 
-@runtime_checkable
-class FutureProtocol(Protocol):
-
-    def add_done_callback(self, fn):
-        ...
-
-    def result(self, timeout=None):
-        ...
-
-    # def set_result(self, result: Any) -> None:
-    #     ...
-
 PENDING = None
-
-def is_future_type(type_: Type) -> bool:
-    return isinstance(type_, FutureProtocol)
-
-def wrap_in_future(return_type: object, return_value: Any) -> Union[FutureProtocol, Any]:
-    # If the function is supposed to return a Future, wrap the cached value
-    if is_future_type(return_type):
-        # FIXME: Unfortunately we cannot always reconstruct the original future type
-        # For example dask's distributed.Future cannot be instantiated simply
-        # We use concurrent.futures.Future instead
-        future = Future()
-        future.set_result(return_value)
-        return future
-    else:
-        return return_value
-
 
 def get_return_type(func: Callable) -> object:
     return_type = inspect.signature(func).return_annotation
@@ -157,26 +132,6 @@ def get_return_type(func: Callable) -> object:
     return return_type
 
 
-class FunctionCall:
-    def __init__(self, func: Callable, args: Tuple, kwargs: Dict):
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-
-
-class ResultStore(Protocol):
-    def get_function_calls(self, function_name: str) -> List[Any]:
-        ...
-
-    def get_result(self, call: FunctionCall) -> Any:
-        ...
-
-    def store_result(self, call: FunctionCall, result: Any) -> None:
-        ...
-    
-    def store_exception(self, call: FunctionCall, exception: Exception) -> None:
-        ...
-
 def caching_decorator(func: Callable, store: ResultStore) -> Callable:
     return_type = get_return_type(func)
 
@@ -185,7 +140,7 @@ def caching_decorator(func: Callable, store: ResultStore) -> Callable:
         call = FunctionCall(func, args, kwargs)
         try:
             cached_value = store.get_result(call)
-            return wrap_in_future(return_type, cached_value)
+            return _wrap_in_future(return_type, cached_value)
         except KeyError:
             pass
 
