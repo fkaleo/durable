@@ -4,7 +4,7 @@ from typing import Any, Callable, Optional, Union
 import ray
 from dask.distributed import fire_and_forget, get_client
 
-from durable.durable import FutureProtocol
+from .durable import FutureProtocol
 
 
 def ray_to_future(func: Callable[..., ray.ObjectRef]) -> Callable[..., FutureProtocol]:
