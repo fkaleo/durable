@@ -5,7 +5,7 @@ import inspect
 from concurrent.futures import Future
 import logging
 import pickle
-from typing import (KT, Any, Callable, Dict, ItemsView, List, Mapping, MutableMapping, Optional,
+from typing import (KT, Any, Callable, Dict, ItemsView, List, Mapping, MutableMapping,
                     Protocol, Tuple, Type, Union, VT_co, runtime_checkable)
 
 from rocksdict import AccessType, Rdict
