@@ -80,7 +80,7 @@ def async_add_with_ray(x, y) -> Future:
 
 
 @pytest.fixture
-def durable_cache(tmp_path):
+def cache_rocksdb(tmp_path):
     from .. import cache_rocksdb
     cache_rocksdb.DEFAULT_CACHE_STORE_ID = str(tmp_path / "test_cache.db")
     cache_rocksdb.DEFAULT_CALL_STORE_ID = str(tmp_path / "test_call.db")
@@ -96,15 +96,15 @@ def connection_string(tmp_path):
     yield connection_string
 
 @pytest.fixture
-def sql_cache(connection_string):
+def cache_sql(connection_string):
     from ..cache_sql import sql_cached
     yield sql_cached(connection_string)
 
 
 @pytest.fixture(params=[
-    "durable_cache",
+    "cache_rocksdb",
     # "functools_cache",
-    "sql_cache",
+    "cache_sql",
 ])
 def cache(request):
     cache = request.getfixturevalue(request.param)
@@ -220,9 +220,9 @@ def compute_heavy_task(n) -> int:
                                              (donothing_singlearg, (100,)),
                                              (fibonacci, (100,)),
                                              ])
-def test_benchmark_functions(benchmark, durable_cache, test_func, args, cache_type):
+def test_benchmark_functions(benchmark, cache_rocksdb, test_func, args, cache_type):
     if cache_type == 'durable':
-        func_to_benchmark = durable_cache(test_func)
+        func_to_benchmark = cache_rocksdb(test_func)
     elif cache_type == 'functools':
         func_to_benchmark = functools.cache(test_func)
     elif cache_type == 'cachetools':
