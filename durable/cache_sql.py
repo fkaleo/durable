@@ -82,9 +82,9 @@ class SQLAlchemyResultStore(ResultStore):
 
 
 def cache(connection_string: str,
-               create_table_sql: Optional[str] = None, 
-               select_sql: Optional[str] = None, 
-               insert_sql: Optional[str] = None) -> Callable:
+          create_table_sql: Optional[str] = None, 
+          select_sql: Optional[str] = None, 
+          insert_sql: Optional[str] = None) -> Callable:
     """
     A decorator that caches the results of a function in a database.
     Allows customization of the SQL statements and the key generation logic.
