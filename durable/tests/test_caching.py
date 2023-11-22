@@ -214,14 +214,14 @@ def compute_heavy_task(n) -> int:
     return sum_of_primes
 
 
-@pytest.mark.parametrize("cache_type", ['durable', 'functools', 'none', 'cachetools'])
+@pytest.mark.parametrize("cache_type", ['cache_rocksdb', 'functools', 'none', 'cachetools'])
 @pytest.mark.parametrize("test_func, args", [(compute_heavy_task, (100,)),
                                              (donothing, ()),
                                              (donothing_singlearg, (100,)),
                                              (fibonacci, (100,)),
                                              ])
 def test_benchmark_functions(benchmark, cache_rocksdb, test_func, args, cache_type):
-    if cache_type == 'durable':
+    if cache_type == 'cache_rocksdb':
         func_to_benchmark = cache_rocksdb(test_func)
     elif cache_type == 'functools':
         func_to_benchmark = functools.cache(test_func)
