@@ -4,7 +4,7 @@ from typing import Any, Callable, List, Optional
 
 from sqlalchemy import create_engine, text
 
-from .cache_rocksdb import caching_decorator # FIXME
+from .caching import caching_decorator
 from .function_store import FunctionCall, ResultStore
 
 
