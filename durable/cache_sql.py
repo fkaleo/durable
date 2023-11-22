@@ -81,7 +81,7 @@ class SQLAlchemyResultStore(ResultStore):
         pass
 
 
-def sql_cached(connection_string: str,
+def cache(connection_string: str,
                create_table_sql: Optional[str] = None, 
                select_sql: Optional[str] = None, 
                insert_sql: Optional[str] = None) -> Callable:

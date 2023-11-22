@@ -4,7 +4,7 @@ from typing import Callable
 
 import ray
 
-from .cache_sql import sql_cached
+from .cache_sql import cache
 from .future import result_from_future, FutureProtocol
 from .unique import ensure_unique
 
@@ -56,7 +56,7 @@ def remote_and_cached(num_cpus: float, memory: float, cache_db: str, num_gpus: f
 
         @ensure_unique
         @result_from_future
-        @sql_cached(cache_db)
+        @cache(cache_db)
         @submit
         @functools.wraps(func)
         @ray.remote(num_cpus=num_cpus, memory=memory, num_gpus=num_gpus)

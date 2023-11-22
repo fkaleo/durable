@@ -97,8 +97,8 @@ def connection_string(tmp_path):
 
 @pytest.fixture
 def cache_sql(connection_string):
-    from ..cache_sql import sql_cached
-    yield sql_cached(connection_string)
+    from ..cache_sql import cache
+    yield cache(connection_string)
 
 
 @pytest.fixture(params=[
