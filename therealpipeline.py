@@ -10,10 +10,10 @@ from functions import media_service_search_person, \
 
 
 # media_service_search_person = ray_to_future(ray.remote(num_cpus=0.1)(media_service_search_person))
-# @ray_to_future
-# @ray.remote(num_cpus=0.1)
 # @cache
 @sql_cached("sqlite:///sql_cache.db")
+@ray_to_future
+@ray.remote(num_cpus=0.1)
 def is_speaker_in_video(*args, **kwargs) -> float:
     return real_is_speaker_in_video(*args, **kwargs)
 
