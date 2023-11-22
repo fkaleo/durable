@@ -2,8 +2,8 @@ import pandas as pd
 import ray
 
 from durable.cache_sql import sql_cached
-from durable.distributed import ray_to_future
-from durable.durable import cache
+from durable.ray import submit
+from durable.cache_rocksdb import cache
 from functions import media_service_search_person, \
                         get_diarized_transcript as real_get_diarized_transcript, \
                         is_speaker_in_video as real_is_speaker_in_video
@@ -12,7 +12,7 @@ from functions import media_service_search_person, \
 # media_service_search_person = ray_to_future(ray.remote(num_cpus=0.1)(media_service_search_person))
 # @cache
 @sql_cached("sqlite:///sql_cache.db")
-@ray_to_future
+@submit
 @ray.remote(num_cpus=0.1)
 def is_speaker_in_video(*args, **kwargs) -> float:
     return real_is_speaker_in_video(*args, **kwargs)

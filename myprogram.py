@@ -1,4 +1,4 @@
-from durable.durable import cache, observe
+from durable.cache_rocksdb import cache, observe
 from tqdm import tqdm
 import time
 

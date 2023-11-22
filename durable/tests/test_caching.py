@@ -81,10 +81,10 @@ def async_add_with_ray(x, y) -> Future:
 
 @pytest.fixture
 def durable_cache(tmp_path):
-    from .. import durable
-    durable.DEFAULT_CACHE_STORE_ID = str(tmp_path / "test_cache.db")
-    durable.DEFAULT_CALL_STORE_ID = str(tmp_path / "test_call.db")
-    yield durable.cache
+    from .. import cache_rocksdb
+    cache_rocksdb.DEFAULT_CACHE_STORE_ID = str(tmp_path / "test_cache.db")
+    cache_rocksdb.DEFAULT_CALL_STORE_ID = str(tmp_path / "test_call.db")
+    yield cache_rocksdb.cache
 
 @pytest.fixture
 def functools_cache():

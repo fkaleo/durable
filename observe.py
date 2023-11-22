@@ -1,4 +1,4 @@
-from durable.durable import DictResultStore
+from durable.cache_rocksdb import DictResultStore
 from durable.cache_sql import SQLAlchemyResultStore
 
 result_store = SQLAlchemyResultStore("sqlite:///sql_cache.db")
