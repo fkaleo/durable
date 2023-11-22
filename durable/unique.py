@@ -3,6 +3,39 @@ from threading import Lock, Event
 from typing import Callable, Dict, Tuple, Any
 
 def ensure_unique(func: Callable) -> Callable:
+    """
+    Decorator that ensures a function with given arguments runs only once concurrently.
+    
+    This decorator wraps a function to ensure that if it's called multiple times 
+    with the same arguments, only the first call will actually execute the function. 
+    Subsequent calls with the same arguments will wait for the first call to complete 
+    and return its result. This behavior is particularly useful for avoiding redundant 
+    computations or operations, especially in a multithreaded environment.
+
+    Parameters
+    ----------
+    func : Callable
+        The function to be wrapped by the decorator. This function can be any 
+        callable with any set of arguments.
+
+    Returns
+    -------
+    Callable
+        A wrapped version of `func` that ensures uniqueness of execution based 
+        on its arguments.
+
+    Examples
+    --------
+    >>> @ensure_unique
+    ... def example_function(x):
+    ...     # some expensive computation or I/O operation
+    ...     return x * x
+    ...
+    >>> example_function(2)  # This call will execute the function.
+    4
+    >>> example_function(2)  # This call will return the result from the first call.
+    4
+    """
     running_functions: Dict[Tuple[Callable, Tuple], Tuple[Event, Any]] = {}
     lock = Lock()
 
