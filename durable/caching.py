@@ -1,13 +1,14 @@
 import functools
 import inspect
 import logging
-from typing import Callable
+from concurrent.futures import Future
+from typing import Any, Callable, Union
 
 from .function_store import FunctionCall, ResultStore
-from .future import _wrap_in_future, is_future_type
+from .future import FutureProtocol, is_future_type
 
 
-def get_return_type(func: Callable) -> object:
+def _get_return_type(func: Callable) -> object:
     return_type = inspect.signature(func).return_annotation
 
     if return_type is inspect._empty:
@@ -16,8 +17,21 @@ def get_return_type(func: Callable) -> object:
     return return_type
 
 
+def _wrap_in_future(return_type: object, return_value: Any) -> Union[FutureProtocol, Any]:
+    # If the function is supposed to return a Future, wrap the cached value
+    if is_future_type(return_type):
+        # FIXME: Unfortunately we cannot always reconstruct the original future type
+        # For example dask's distributed.Future cannot be instantiated simply
+        # We use concurrent.futures.Future instead
+        future = Future()
+        future.set_result(return_value)
+        return future
+    else:
+        return return_value
+
+
 def caching_decorator(func: Callable, store: ResultStore) -> Callable:
-    return_type = get_return_type(func)
+    return_type = _get_return_type(func)
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):

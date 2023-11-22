@@ -1,8 +1,7 @@
 import concurrent.futures
-from concurrent.futures import Future
 import functools
 
-from typing import Any, Protocol, Type, Union, runtime_checkable
+from typing import Protocol, Type, runtime_checkable
 
 
 def result_from_future(func):
@@ -35,16 +34,3 @@ class FutureProtocol(Protocol):
 
 def is_future_type(type_: Type) -> bool:
     return isinstance(type_, FutureProtocol)
-
-
-def _wrap_in_future(return_type: object, return_value: Any) -> Union[FutureProtocol, Any]:
-    # If the function is supposed to return a Future, wrap the cached value
-    if is_future_type(return_type):
-        # FIXME: Unfortunately we cannot always reconstruct the original future type
-        # For example dask's distributed.Future cannot be instantiated simply
-        # We use concurrent.futures.Future instead
-        future = Future()
-        future.set_result(return_value)
-        return future
-    else:
-        return return_value
