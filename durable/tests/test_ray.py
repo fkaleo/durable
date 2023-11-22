@@ -8,7 +8,7 @@ from ..future import FutureProtocol
 
 @pytest.fixture(scope="session", autouse=True)
 def ray_setup():
-    ray.init()
+    ray.init(ignore_reinit_error=True)
     yield
     ray.shutdown()
 
