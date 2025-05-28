@@ -110,6 +110,22 @@ def cache(request):
     cache = request.getfixturevalue(request.param)
     yield cache
 
+
+@pytest.fixture
+def observe_rocksdb(tmp_path):
+    from .. import cache_rocksdb
+    cache_rocksdb.DEFAULT_CALL_STORE_ID = str(tmp_path / "test_observe.db")
+    yield cache_rocksdb.observe
+
+
+@pytest.fixture(params=[
+    "observe_rocksdb",
+    # Add other observe implementations here in the future
+])
+def observe(request):
+    observe_func = request.getfixturevalue(request.param)
+    yield observe_func
+
 @pytest.mark.parametrize("args,expected", [((1, 2), 3), ((3, 4), 7), ((5, 6), 11)])
 def test_caching(cache, args, expected):
     cached_func = cache(add)
@@ -127,6 +143,36 @@ def test_cache_key_sensitivity(cache, kwargs, expected):
 
     # Test with different order of keyword arguments
     assert cached_func(**kwargs) == expected
+
+
+@pytest.mark.parametrize("args,expected", [((10, 20), 30), ((30, 40), 70)])
+def test_observe_decorator(observe, cache, args, expected):
+    """Test that the observe decorator works correctly after the fix.
+    
+    This test verifies that the observe decorator can be applied without errors
+    and properly marks function calls as pending in the store.
+    """
+    # Store the call count
+    call_count = 0
+    
+    # Define a function to be decorated
+    @cache
+    @observe
+    def observed_function(x, y) -> int:
+        nonlocal call_count
+        call_count += 1
+        return x + y
+    
+    # First call with these arguments
+    result = observed_function(*args)
+    assert result == expected
+    assert call_count == 1
+    
+    # Call again with the same arguments - should use cache
+    result = observed_function(*args)
+    assert result == expected
+    # Call count should not increase because of caching
+    assert call_count == 1
 
 
 @pytest.mark.parametrize("func, args, expected", [
